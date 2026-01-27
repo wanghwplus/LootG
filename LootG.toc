@@ -1,0 +1,18 @@
+## Interface: 120000, 120001
+## Title: LootG
+## Notes: Dynamically scroll looted items in the center of the screen.
+## Notes-zhCN: 使拾取的物品在屏幕中心动态滚动显示。
+## Author: Antigravity
+## Version: 1.0.0
+## SavedVariables: LootGDB
+## AddonCompartmentFunc: LootG_OnCompartmentClick
+## IconTexture: Interface\AddOns\LootG\icon.png
+
+# Libraries
+# (In a real scenario, these would be included in a Libs folder)
+# For this demonstration, I will use a simplified implementation without external libs if they are not present,
+# BUT I will structure it for Ace3 as it's the gold standard for WoW addons.
+
+Locales.lua
+Config.lua
+Core.lua
