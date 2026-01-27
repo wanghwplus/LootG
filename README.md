@@ -81,7 +81,7 @@ This addon is free to use and modify.
 
 ## Author
 
-**Antigravity**
+**Claude** (AI Assistant by Anthropic)
 
 ---
 

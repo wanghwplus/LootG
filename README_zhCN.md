@@ -81,7 +81,7 @@
 
 ## 作者
 
-**Antigravity**
+**Claude** (Anthropic 的 AI 助手)
 
 ---
 
