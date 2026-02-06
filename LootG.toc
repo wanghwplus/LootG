@@ -15,4 +15,4 @@
 
 Locales.lua
 Config.lua
-Core.lua
+LootG.lua

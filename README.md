@@ -2,18 +2,32 @@
 
 ![LootG Icon](icon.png)
 
-**LootG** is a World of Warcraft addon that displays looted items with a beautiful scrolling animation in the center of your screen.
+**LootG** is a lightweight World of Warcraft addon for loot notification and combat state display. Recommended to use with Leatrix_Plus's "disable banner" feature.
+
+![Loot](loot.png)
+![Income](income.png)
 
 ## Features
 
-- **Scrolling Loot Display** - Looted items scroll upward with smooth animation
+### Loot Notification
+- **Scrolling Loot Display** - Looted items scroll with smooth animation
 - **Item Quality Colors** - Items are displayed with their quality colors (Common, Uncommon, Rare, Epic, Legendary)
 - **Item Icons** - Shows item icons alongside the item name
 - **Bag Count** - Displays the total count of the item in your bags (only when > 0)
 - **Currency & Gold Support** - Also displays looted currency and gold
-- **Customizable Position** - Drag the anchor to position the display anywhere on screen
-- **Font Customization** - Choose from multiple fonts, adjust size, outline, and shadow
+- **Customizable Position** - Drag the blue anchor to position the display anywhere on screen
 - **Clean Interface** - Only shows YOUR loot, not party/raid members
+
+### Combat State
+- **Enter/Leave Combat Flash** - Displays flash text when entering or leaving combat
+- **Scroll & Static Modes** - Choose between scrolling animation or static display
+- **4-Direction Scrolling** - Scroll Up, Down, Left, or Right
+- **Custom Text** - Set your own enter/leave combat text, or use localized defaults
+- **Independent Anchor** - Drag the red anchor to position combat text separately from loot
+
+### Shared
+- **Independent Font Settings** - Each module has its own font, size, outline, and shadow settings
+- **Multi-Language** - Supports English, Simplified Chinese (zhCN), and Traditional Chinese (zhTW)
 
 ## Installation
 
@@ -35,38 +49,70 @@ Access settings through:
 - Click the LootG icon in the Addon Compartment (minimap button)
 - Go to Game Menu → Options → AddOns → LootG
 
-### Configuration Options
+The settings panel is organized into:
+- **LootG** (main page) - Plugin intro and description
+- **Loot Notification** (subcategory) - All loot display settings
+- **Combat State** (subcategory) - All combat flash text settings
+
+### Loot Notification Settings
 
 | Setting | Description |
 |---------|-------------|
-| **Lock Position** | Lock/unlock the anchor for positioning |
+| **Enabled** | Enable/disable loot notifications |
+| **Lock Position** | Lock/unlock the blue anchor for positioning |
 | **Show Icon** | Toggle item icon display |
-| **X/Y Offset** | Fine-tune the display position |
-| **Display Time** | How long messages stay visible (0.5-10s) |
+| **X/Y Coordinate** | Fine-tune the display position |
+| **Display Duration** | How long messages stay visible (0.5-10s) |
 | **Scroll Time** | Animation speed (0.1-5s) |
 | **Fade Speed** | Fade out duration (0.1-2s) |
+| **Scroll Direction** | Up or Down |
 | **Font Size** | Text size (8-48) |
-| **Font** | Choose from Standard, Chat, Damage, or Quest fonts |
+| **Font** | Standard, Chat, Damage, or Quest |
 | **Font Outline** | None, Thin, Thick, or Monochrome |
 | **Font Shadow** | Enable/disable text shadow |
 
+### Combat State Settings
+
+| Setting | Description |
+|---------|-------------|
+| **Enabled** | Enable/disable combat state flash |
+| **Lock Position** | Lock/unlock the red anchor for positioning |
+| **X/Y Coordinate** | Fine-tune the display position |
+| **Display Mode** | Scroll or Static |
+| **Scroll Direction** | Up, Down, Left, or Right |
+| **Flash Duration** | How long the text is displayed (0.1-3s) |
+| **Fade Time** | Fade out duration (0.1-3s) |
+| **Scroll Speed** | Animation speed multiplier (0.1-5) |
+| **Font Size** | Text size (8-72) |
+| **Font** | Standard, Chat, Damage, or Quest |
+| **Font Outline** | None, Thin, Thick, or Monochrome |
+| **Font Shadow** | Enable/disable text shadow |
+| **Enter Combat Text** | Custom text (empty = localized default) |
+| **Leave Combat Text** | Custom text (empty = localized default) |
+
 ## Display Format
 
+### Loot
 ```
 [Icon] Loot ItemName x1 (BagCount)
 ```
 
-- **Icon** - Item texture (optional)
-- **Loot** - Prefix text
-- **ItemName** - Colored by item quality
-- **x1** - Quantity looted
-- **(BagCount)** - Total in bags (only shown if > 0)
+### Combat State
+```
+Enter Combat    (red flash text)
+Leave Combat    (green flash text)
+```
 
 ## Screenshots
 
 *Coming soon*
 
 ## Changelog
+
+### v1.1.0
+- Added Combat State flash text module with Scroll/Static modes and 4-direction scrolling
+- Subcategory settings, independent anchors and font settings per module
+- Merged into single LootG.lua, continuous scrolling, localized UI labels
 
 ### v1.0.0
 - Initial release
