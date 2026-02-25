@@ -10,7 +10,6 @@ f:RegisterEvent("LOOT_READY")
 f:RegisterEvent("LOOT_SLOT_CLEARED")
 f:RegisterEvent("LOOT_CLOSED")
 f:RegisterEvent("PLAYER_MONEY")
-f:RegisterEvent("SHOW_LOOT_TOAST")
 f:RegisterEvent("PLAYER_REGEN_DISABLED")
 f:RegisterEvent("PLAYER_REGEN_ENABLED")
 
@@ -615,28 +614,6 @@ f:SetScript("OnEvent", function(self, event, ...)
             CreateScrollingMessage(moneyText, icon)
         end
         previousMoney = currentMoney
-    elseif event == "SHOW_LOOT_TOAST" then
-        local typeIdentifier, link, quantity = ...
-        if not link or link == "" then return end
-        if typeIdentifier == "money" then return end
-
-        quantity = quantity or 1
-        local isCurrency = (typeIdentifier == "currency")
-
-        local texture, quality
-        if isCurrency then
-            local currencyInfo = C_CurrencyInfo.GetCurrencyInfoFromLink(link)
-            if currencyInfo then
-                texture = currencyInfo.iconFileID
-                quality = currencyInfo.quality
-            end
-        else
-            local _, _, q, _, _, _, _, _, _, t = GetItemInfo(link)
-            texture = t
-            quality = q
-        end
-
-        ShowItemLoot(link, quantity, texture, quality, isCurrency)
     elseif event == "PLAYER_REGEN_DISABLED" then
         if not GetCSSetting("enabled", true) then return end
         FlashCombat(GetEnterCombatText(), 1.0, 0.1, 0.1)
