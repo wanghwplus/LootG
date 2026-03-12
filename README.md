@@ -15,6 +15,7 @@
 - **Item Icons** - Shows item icons alongside the item name
 - **Bag Count** - Displays the total count of the item in your bags (only when > 0)
 - **Currency & Gold Support** - Also displays looted currency and gold
+- **Skill Up Notification** - Displays profession skill level increases
 - **Customizable Position** - Drag the blue anchor to position the display anywhere on screen
 - **Clean Interface** - Only shows YOUR loot, not party/raid members
 
@@ -41,6 +42,7 @@
 
 - `/lootg` - Open settings panel
 - `/lootg test` - Display a test loot message
+- `/lootg debug` - Show debug info in chat
 
 ### Settings
 
@@ -97,6 +99,11 @@ The settings panel is organized into:
 [Icon] Loot ItemName x1 (BagCount)
 ```
 
+### Skill Up
+```
+[Icon] SkillName Level
+```
+
 ### Combat State
 ```
 Enter Combat    (red flash text)
@@ -108,6 +115,11 @@ Leave Combat    (green flash text)
 *Coming soon*
 
 ## Changelog
+
+### v1.2.0
+- Gold display now shows all sources (vendor, quest, loot, mail, etc.)
+- Added reputation change notifications with matching chat color
+- Added profession skill up notifications
 
 ### v1.1.0
 - Added Combat State flash text module with Scroll/Static modes and 4-direction scrolling

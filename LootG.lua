@@ -9,7 +9,9 @@ f:RegisterEvent("ADDON_LOADED")
 f:RegisterEvent("LOOT_READY")
 f:RegisterEvent("LOOT_SLOT_CLEARED")
 f:RegisterEvent("LOOT_CLOSED")
+f:RegisterEvent("CHAT_MSG_SKILL")
 f:RegisterEvent("PLAYER_MONEY")
+f:RegisterEvent("CHAT_MSG_COMBAT_FACTION_CHANGE")
 f:RegisterEvent("PLAYER_REGEN_DISABLED")
 f:RegisterEvent("PLAYER_REGEN_ENABLED")
 
@@ -607,13 +609,41 @@ f:SetScript("OnEvent", function(self, event, ...)
         wipe(lootCache)
     elseif event == "PLAYER_MONEY" then
         local currentMoney = GetMoney()
-        if previousMoney and isLooting and currentMoney > previousMoney then
+        if previousMoney and currentMoney > previousMoney then
             local gained = currentMoney - previousMoney
             local moneyText = GetCoinTextureString(gained)
             local icon = "Interface\\Icons\\INV_Misc_Coin_02"
             CreateScrollingMessage(moneyText, icon)
         end
         previousMoney = currentMoney
+    elseif event == "CHAT_MSG_COMBAT_FACTION_CHANGE" then
+        if not LootGDB or not LootGDB.enabled then return end
+        local message = ...
+        local info = ChatTypeInfo["COMBAT_FACTION_CHANGE"]
+        local colorCode = info and format("|cff%02x%02x%02x", info.r * 255, info.g * 255, info.b * 255) or "|cff00ffa0"
+        CreateScrollingMessage(colorCode .. message .. "|r", "Interface\\Icons\\Achievement_Reputation_01")
+    elseif event == "CHAT_MSG_SKILL" then
+        if not LootGDB or not LootGDB.enabled then return end
+        local message = ...
+        local info = ChatTypeInfo["SKILL"]
+        local colorCode = info and format("|cff%02x%02x%02x", info.r * 255, info.g * 255, info.b * 255) or "|cff5555ff"
+        local skillName, skillLevel
+        if ERR_SKILL_UP_SI then
+            local pattern = ERR_SKILL_UP_SI:gsub("%%%d*%$?s", "(.-)"):gsub("%%%d*%$?d", "(%%d+)")
+            pattern = pattern:gsub("([%(%)%.%%%+%-%*%?%[%]%^%$])", "%%%1")
+            -- Restore captures that were escaped
+            pattern = ERR_SKILL_UP_SI:gsub("%%%d*%$?s", "\001"):gsub("%%%d*%$?d", "\002")
+            pattern = pattern:gsub("([%(%)%.%%%+%-%*%?%[%]%^%$])", "%%%1")
+            pattern = pattern:gsub("\001", "(.-)"):gsub("\002", "(%%d+)")
+            skillName, skillLevel = message:match(pattern)
+        end
+        local text
+        if skillName and skillLevel then
+            text = colorCode .. skillName .. " " .. skillLevel .. "|r"
+        else
+            text = colorCode .. message .. "|r"
+        end
+        CreateScrollingMessage(text, "Interface\\Icons\\INV_Misc_Book_11")
     elseif event == "PLAYER_REGEN_DISABLED" then
         if not GetCSSetting("enabled", true) then return end
         FlashCombat(GetEnterCombatText(), 1.0, 0.1, 0.1)
@@ -627,7 +657,11 @@ end)
 
 SLASH_LOOTG1 = "/lootg"
 SlashCmdList["LOOTG"] = function(msg)
-    if msg == "test" then
+    if msg == "debug" then
+        print("|cff00ff00[LootG Debug]|r enabled = " .. tostring(LootGDB and LootGDB.enabled))
+        print("|cff00ff00[LootG Debug]|r ERR_SKILL_UP_SI = " .. tostring(ERR_SKILL_UP_SI))
+        return
+    elseif msg == "test" then
         local testItem = "|cff0070dd|Hitem:124112::::::::110:::::|h[Test Item]|h|r"
         testItem = testItem:gsub("(|h)%[(.-)%](|h)", "%1%2%3")
         local testIcon = 134400 -- A generic icon
