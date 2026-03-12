@@ -612,7 +612,7 @@ f:SetScript("OnEvent", function(self, event, ...)
         if previousMoney and currentMoney > previousMoney then
             local gained = currentMoney - previousMoney
             local moneyText = GetCoinTextureString(gained)
-            local icon = "Interface\\Icons\\INV_Misc_Coin_02"
+            local icon = 133787 -- INV_Misc_Coin_02 fileID
             CreateScrollingMessage(moneyText, icon)
         end
         previousMoney = currentMoney
@@ -621,7 +621,7 @@ f:SetScript("OnEvent", function(self, event, ...)
         local message = ...
         local info = ChatTypeInfo["COMBAT_FACTION_CHANGE"]
         local colorCode = info and format("|cff%02x%02x%02x", info.r * 255, info.g * 255, info.b * 255) or "|cff00ffa0"
-        CreateScrollingMessage(colorCode .. message .. "|r", "Interface\\Icons\\Achievement_Reputation_01")
+        CreateScrollingMessage(colorCode .. message .. "|r", 236681) -- Achievement_Reputation_01 fileID
     elseif event == "CHAT_MSG_SKILL" then
         if not LootGDB or not LootGDB.enabled then return end
         local message = ...
@@ -637,13 +637,30 @@ f:SetScript("OnEvent", function(self, event, ...)
             pattern = pattern:gsub("\001", "(.-)"):gsub("\002", "(%%d+)")
             skillName, skillLevel = message:match(pattern)
         end
+        -- Try to find the profession icon matching skillName
+        local skillIcon = 136830 -- INV_Misc_Book_11 fileID
+        if skillName then
+            local prof1, prof2, arch, fish, cook = GetProfessions()
+            local profIDs = {prof1, prof2, arch, fish, cook}
+            for i = 1, 5 do
+                local profID = profIDs[i]
+                if profID then
+                    local profName, profIcon = GetProfessionInfo(profID)
+                    if profName and (profName:find(skillName, 1, true) or skillName:find(profName, 1, true)) then
+                        skillIcon = profIcon
+                        break
+                    end
+                end
+            end
+        end
+
         local text
         if skillName and skillLevel then
             text = colorCode .. skillName .. " " .. skillLevel .. "|r"
         else
             text = colorCode .. message .. "|r"
         end
-        CreateScrollingMessage(text, "Interface\\Icons\\INV_Misc_Book_11")
+        CreateScrollingMessage(text, skillIcon)
     elseif event == "PLAYER_REGEN_DISABLED" then
         if not GetCSSetting("enabled", true) then return end
         FlashCombat(GetEnterCombatText(), 1.0, 0.1, 0.1)
