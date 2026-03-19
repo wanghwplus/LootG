@@ -11,6 +11,7 @@ f:RegisterEvent("LOOT_SLOT_CLEARED")
 f:RegisterEvent("LOOT_CLOSED")
 f:RegisterEvent("CHAT_MSG_SKILL")
 f:RegisterEvent("PLAYER_MONEY")
+f:RegisterEvent("SHOW_LOOT_TOAST")
 f:RegisterEvent("CHAT_MSG_COMBAT_FACTION_CHANGE")
 f:RegisterEvent("PLAYER_REGEN_DISABLED")
 f:RegisterEvent("PLAYER_REGEN_ENABLED")
@@ -20,6 +21,7 @@ local messagePool = {}
 local lootCache = {}
 local previousMoney = nil
 local isLooting = false
+local recentlyShown = {} -- 去重：记录已由 LOOT_SLOT_CLEARED 显示的物品
 
 -- Anchor Frame for positioning
 local anchor = CreateFrame("Frame", "LootGAnchor", UIParent, "BackdropTemplate")
@@ -603,19 +605,48 @@ f:SetScript("OnEvent", function(self, event, ...)
 
         local isCurrency = (cached.slotType == Enum.LootSlotType.Currency)
         ShowItemLoot(cached.link, cached.quantity, cached.texture, cached.quality, isCurrency)
+        recentlyShown[cached.link] = GetTime()
         lootCache[slot] = nil
     elseif event == "LOOT_CLOSED" then
         isLooting = false
         wipe(lootCache)
+        -- 清理过期的去重记录
+        local now = GetTime()
+        for k, v in pairs(recentlyShown) do
+            if now - v > 5 then
+                recentlyShown[k] = nil
+            end
+        end
     elseif event == "PLAYER_MONEY" then
         local currentMoney = GetMoney()
         if previousMoney and currentMoney > previousMoney then
             local gained = currentMoney - previousMoney
             local moneyText = GetCoinTextureString(gained)
-            local icon = 133787 -- INV_Misc_Coin_02 fileID
-            CreateScrollingMessage(moneyText, icon)
+            CreateScrollingMessage(moneyText, nil)
         end
         previousMoney = currentMoney
+    elseif event == "SHOW_LOOT_TOAST" then
+        if not LootGDB or not LootGDB.enabled then return end
+        local typeIdentifier, link, quantity = ...
+        if not link or link == "" then return end
+        if typeIdentifier == "money" then return end
+        -- 去重：跳过已由 LOOT_SLOT_CLEARED 显示的物品
+        if recentlyShown[link] and (GetTime() - recentlyShown[link]) < 5 then return end
+        quantity = quantity or 1
+        local isCurrency = (typeIdentifier == "currency")
+        local texture, quality
+        if isCurrency then
+            local currencyInfo = C_CurrencyInfo.GetCurrencyInfoFromLink(link)
+            if currencyInfo then
+                texture = currencyInfo.iconFileID
+                quality = currencyInfo.quality
+            end
+        else
+            local _, _, q, _, _, _, _, _, _, t = GetItemInfo(link)
+            texture = t
+            quality = q
+        end
+        ShowItemLoot(link, quantity, texture, quality, isCurrency)
     elseif event == "CHAT_MSG_COMBAT_FACTION_CHANGE" then
         if not LootGDB or not LootGDB.enabled then return end
         local message = ...
