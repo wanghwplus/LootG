@@ -21,6 +21,7 @@ local messagePool = {}
 local lootCache = {}
 local previousMoney = nil
 local isLooting = false
+local lootMoneyCopper = 0 -- 缓存拾取窗口中的金币数额（铜币），避免与其他来源混淆
 local recentlyShown = {} -- 去重：记录已由 LOOT_SLOT_CLEARED 显示的物品
 
 -- 统一动画驱动帧：单一 OnUpdate 循环驱动所有消息动画
@@ -676,19 +677,32 @@ f:SetScript("OnEvent", function(self, event, ...)
         end
     elseif event == "LOOT_READY" then
         isLooting = true
+        lootMoneyCopper = 0
         wipe(lootCache)
         for i = 1, GetNumLootItems() do
-            local link = GetLootSlotLink(i)
-            if link then
-                local texture, _, quantity, _, quality = GetLootSlotInfo(i)
-                local slotType = GetLootSlotType(i)
-                lootCache[i] = {
-                    link = link,
-                    texture = texture,
-                    quantity = quantity or 1,
-                    quality = quality,
-                    slotType = slotType,
-                }
+            local slotType = GetLootSlotType(i)
+            if slotType == Enum.LootSlotType.Money then
+                -- 缓存拾取窗口中金币槽的铜币数额
+                local _, _, quantity = GetLootSlotInfo(i)
+                if quantity then
+                    lootMoneyCopper = lootMoneyCopper + quantity
+                end
+            else
+                local texture, _, quantity, currencyID, quality = GetLootSlotInfo(i)
+                local link = GetLootSlotLink(i)
+                -- 通货槽位 GetLootSlotLink 可能返回 nil，用 currencyID 构建链接
+                if not link and slotType == Enum.LootSlotType.Currency and currencyID then
+                    link = C_CurrencyInfo.GetCurrencyLink(currencyID)
+                end
+                if link then
+                    lootCache[i] = {
+                        link = link,
+                        texture = texture,
+                        quantity = quantity or 1,
+                        quality = quality,
+                        slotType = slotType,
+                    }
+                end
             end
         end
     elseif event == "LOOT_SLOT_CLEARED" then
@@ -705,6 +719,7 @@ f:SetScript("OnEvent", function(self, event, ...)
         lootCache[slot] = nil
     elseif event == "LOOT_CLOSED" then
         isLooting = false
+        lootMoneyCopper = 0
         wipe(lootCache)
         -- 清理过期的去重记录
         local now = GetTime()
@@ -717,6 +732,11 @@ f:SetScript("OnEvent", function(self, event, ...)
         local currentMoney = GetMoney()
         if previousMoney and currentMoney > previousMoney then
             local gained = currentMoney - previousMoney
+            -- 拾取中且有缓存的拾取金币时，使用缓存金额避免混入其他来源的金币
+            if isLooting and lootMoneyCopper > 0 then
+                gained = lootMoneyCopper
+                lootMoneyCopper = 0
+            end
             local moneyText = C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString
                 and C_CurrencyInfo.GetCoinTextureString(gained)
                 or GetCoinTextureString(gained)
