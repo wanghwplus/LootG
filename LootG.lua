@@ -23,6 +23,12 @@ local previousMoney = nil
 local isLooting = false
 local recentlyShown = {} -- 去重：记录已由 LOOT_SLOT_CLEARED 显示的物品
 
+-- 从物品/货币链接中提取稳定的ID用于去重（忽略bonus ID等实例差异）
+local function GetIDFromLink(link)
+    if not link then return nil end
+    return link:match("item:(%d+)") or link:match("currency:(%d+)")
+end
+
 -- Anchor Frame for positioning
 local anchor = CreateFrame("Frame", "LootGAnchor", UIParent, "BackdropTemplate")
 anchor:SetSize(200, 40)
@@ -605,7 +611,10 @@ f:SetScript("OnEvent", function(self, event, ...)
 
         local isCurrency = (cached.slotType == Enum.LootSlotType.Currency)
         ShowItemLoot(cached.link, cached.quantity, cached.texture, cached.quality, isCurrency)
-        recentlyShown[cached.link] = GetTime()
+        local dedupKey = GetIDFromLink(cached.link)
+        if dedupKey then
+            recentlyShown[dedupKey] = GetTime()
+        end
         lootCache[slot] = nil
     elseif event == "LOOT_CLOSED" then
         isLooting = false
@@ -621,7 +630,9 @@ f:SetScript("OnEvent", function(self, event, ...)
         local currentMoney = GetMoney()
         if previousMoney and currentMoney > previousMoney then
             local gained = currentMoney - previousMoney
-            local moneyText = GetCoinTextureString(gained)
+            local moneyText = C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString
+                and C_CurrencyInfo.GetCoinTextureString(gained)
+                or GetCoinTextureString(gained)
             CreateScrollingMessage(moneyText, nil)
         end
         previousMoney = currentMoney
@@ -631,7 +642,8 @@ f:SetScript("OnEvent", function(self, event, ...)
         if not link or link == "" then return end
         if typeIdentifier == "money" then return end
         -- 去重：跳过已由 LOOT_SLOT_CLEARED 显示的物品
-        if recentlyShown[link] and (GetTime() - recentlyShown[link]) < 5 then return end
+        local dedupKey = GetIDFromLink(link)
+        if dedupKey and recentlyShown[dedupKey] and (GetTime() - recentlyShown[dedupKey]) < 5 then return end
         quantity = quantity or 1
         local isCurrency = (typeIdentifier == "currency")
         local texture, quality
@@ -708,6 +720,12 @@ SlashCmdList["LOOTG"] = function(msg)
     if msg == "debug" then
         print("|cff00ff00[LootG Debug]|r enabled = " .. tostring(LootGDB and LootGDB.enabled))
         print("|cff00ff00[LootG Debug]|r ERR_SKILL_UP_SI = " .. tostring(ERR_SKILL_UP_SI))
+        local money = GetMoney()
+        print("|cff00ff00[LootG Debug]|r GetMoney() = " .. tostring(money) .. " copper")
+        print("|cff00ff00[LootG Debug]|r GetCoinTextureString(10000) = " .. tostring(GetCoinTextureString(10000)))
+        if C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString then
+            print("|cff00ff00[LootG Debug]|r C_CurrencyInfo(10000) = " .. tostring(C_CurrencyInfo.GetCoinTextureString(10000)))
+        end
         return
     elseif msg == "test" then
         local testItem = "|cff0070dd|Hitem:124112::::::::110:::::|h[Test Item]|h|r"
