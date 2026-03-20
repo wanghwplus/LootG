@@ -23,6 +23,10 @@ local previousMoney = nil
 local isLooting = false
 local recentlyShown = {} -- 去重：记录已由 LOOT_SLOT_CLEARED 显示的物品
 
+-- 统一动画驱动帧：单一 OnUpdate 循环驱动所有消息动画
+local animContainer = CreateFrame("Frame", nil, UIParent)
+animContainer:Hide()
+
 -- 从物品/货币链接中提取稳定的ID用于去重（忽略bonus ID等实例差异）
 local function GetIDFromLink(link)
     if not link then return nil end
@@ -141,16 +145,110 @@ end
 
 local function RecycleMessageFrame(frame)
     frame:Hide()
-    frame:SetScript("OnUpdate", nil)
+    frame:ClearAllPoints()
+    frame.expired = true
     tinsert(messagePool, frame)
-    -- Remove from active list
-    for i, msg in ipairs(activeMessages) do
-        if msg == frame then
-            table.remove(activeMessages, i)
-            break
+end
+
+-- 统一动画更新：驱动所有活跃消息的位置、碰撞避免和渐隐
+local function AnimUpdate(self, elapsed)
+    local now = GetTime()
+
+    -- 第一遍：计算位置和渐隐
+    for _, frame in ipairs(activeMessages) do
+        if not frame.expired then
+            local currTime = now - frame.startTime
+            local speed = 100 / frame.duration
+            local animationOffset = speed * currTime
+            frame.currentY = (animationOffset * frame.direction) + frame.baseOffset
+
+            -- 渐隐处理
+            if currTime > frame.displayTime then
+                local fadeProgress = (currTime - frame.displayTime) / frame.fadeSpeed
+                if fadeProgress >= 1 then
+                    RecycleMessageFrame(frame)
+                else
+                    -- 二次缓出：先慢后快，更自然
+                    local alpha = (1 - fadeProgress)
+                    alpha = alpha * alpha
+                    frame:SetAlpha(alpha)
+                end
+            end
         end
     end
+
+    -- 第二遍：碰撞检测（仅多消息时执行）
+    local activeCount = 0
+    for _, frame in ipairs(activeMessages) do
+        if not frame.expired then
+            activeCount = activeCount + 1
+        end
+    end
+
+    if activeCount > 1 then
+        -- 收集活跃帧并按 currentY 排序
+        local sorted = {}
+        for _, frame in ipairs(activeMessages) do
+            if not frame.expired then
+                tinsert(sorted, frame)
+            end
+        end
+        -- 按 currentY 排序，用 startTime 做平局裁决避免抖动
+        table.sort(sorted, function(a, b)
+            if a.currentY == b.currentY then
+                return a.startTime < b.startTime
+            end
+            return a.currentY < b.currentY
+        end)
+
+        local minSpacing = (LootGDB and LootGDB.fontSize or 20) + 6
+        -- 方向感知：UP 时推更高的帧上移，DOWN 时推更低的帧下移
+        local dirUp = (LootGDB and LootGDB.scrollDirection == "UP")
+        if dirUp then
+            -- 从低到高扫描，保证高位帧与低位帧间距足够
+            for i = 2, #sorted do
+                local gap = sorted[i].currentY - sorted[i - 1].currentY
+                if gap < minSpacing then
+                    local push = minSpacing - gap
+                    sorted[i].baseOffset = sorted[i].baseOffset + push
+                    sorted[i].currentY = sorted[i].currentY + push
+                end
+            end
+        else
+            -- DOWN：从高到低扫描，保证低位帧与高位帧间距足够
+            for i = #sorted - 1, 1, -1 do
+                local gap = sorted[i + 1].currentY - sorted[i].currentY
+                if gap < minSpacing then
+                    local push = minSpacing - gap
+                    sorted[i].baseOffset = sorted[i].baseOffset - push
+                    sorted[i].currentY = sorted[i].currentY - push
+                end
+            end
+        end
+    end
+
+    -- 第三遍：应用最终位置
+    for _, frame in ipairs(activeMessages) do
+        if not frame.expired then
+            frame:ClearAllPoints()
+            frame:SetPoint("CENTER", anchor, "CENTER", 0, frame.currentY)
+        end
+    end
+
+    -- 反向遍历清理 expired 帧
+    for i = #activeMessages, 1, -1 do
+        if activeMessages[i].expired then
+            table.remove(activeMessages, i)
+        end
+    end
+
+    -- 无活跃消息时停止 OnUpdate
+    if #activeMessages == 0 then
+        animContainer:Hide()
+    end
 end
+
+animContainer:SetScript("OnUpdate", AnimUpdate)
 
 local function CreateScrollingMessage(text, icon)
     if not LootGDB then return end
@@ -187,37 +285,21 @@ local function CreateScrollingMessage(text, icon)
     frame.fadeSpeed = LootGDB.fadeSpeed
     frame.direction = LootGDB.scrollDirection == "UP" and 1 or -1
     frame.baseOffset = 0
+    frame.expired = false
+    frame.currentY = 0
 
-    -- Push existing messages
-    local offsetStep = (LootGDB.fontSize + 10) * frame.direction
+    -- Push existing messages（碰撞检测会动态保证间距，步长减小）
+    local offsetStep = (LootGDB.fontSize + 6) * frame.direction
     for _, active in ipairs(activeMessages) do
-        active.baseOffset = active.baseOffset + offsetStep
+        if not active.expired then
+            active.baseOffset = active.baseOffset + offsetStep
+        end
     end
 
     table.insert(activeMessages, frame)
 
-    frame:SetScript("OnUpdate", function(self, elapsed)
-        local currTime = GetTime() - self.startTime
-
-        -- Linear continuous scrolling (No distance limit)
-        -- Speed derived from settings: traverse 100 pixels in 'scrollTime' seconds
-        local speed = 100 / self.duration
-        local animationOffset = speed * currTime
-
-        local currentY = (animationOffset * self.direction) + self.baseOffset
-
-        self:SetPoint("CENTER", anchor, "CENTER", 0, currentY)
-
-        -- Fading
-        if currTime > self.displayTime then
-            local fadeProgress = (currTime - self.displayTime) / self.fadeSpeed
-            if fadeProgress >= 1 then
-                RecycleMessageFrame(self)
-            else
-                self:SetAlpha(1 - fadeProgress)
-            end
-        end
-    end)
+    -- 启动统一动画循环
+    animContainer:Show()
 end
 
 -- Helper to display a looted item or currency
@@ -465,7 +547,10 @@ local function OnUpdate_Scroll(self, elapsed)
             csFrame:Hide()
             csMode = nil
         else
-            csFrame:SetAlpha(1 - fadeProgress)
+            -- 二次缓出：先慢后快，更自然
+            local alpha = (1 - fadeProgress)
+            alpha = alpha * alpha
+            csFrame:SetAlpha(alpha)
         end
     end
 end
@@ -489,13 +574,15 @@ local function OnUpdate_Static(self, elapsed)
 
     elseif csMode == "fade" then
         local fadeProgress = csTimer / fadeTime
-        local alpha = 1 - fadeProgress
 
-        if alpha <= 0 then
+        if fadeProgress >= 1 then
             csFrame:SetAlpha(0)
             csFrame:Hide()
             csMode = nil
         else
+            -- 二次缓出：先慢后快，更自然
+            local alpha = (1 - fadeProgress)
+            alpha = alpha * alpha
             csFrame:SetAlpha(alpha)
         end
     end
