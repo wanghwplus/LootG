@@ -15,4 +15,5 @@
 
 Locales.lua
 Config.lua
+LootGUtils.lua
 LootG.lua

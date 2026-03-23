@@ -27,6 +27,8 @@ local isLooting = false
 local lootMoneyCopper = 0 -- 缓存拾取窗口中的金币数额（铜币），避免与其他来源混淆
 local recentlyShown = {} -- 去重：记录已由 LOOT_SLOT_CLEARED 显示的物品
 local lastMoneyShownTime = 0 -- 去重：PLAYER_MONEY 与 CHAT_MSG_MONEY 之间
+local RECENTLY_SHOWN_WINDOW = 5
+local Util = LootG.Util
 
 -- 构建本地化无关的聊天消息匹配模式
 local function BuildPattern(globalString)
@@ -42,8 +44,15 @@ local PATTERN_LOOT_SELF = BuildPattern(LOOT_ITEM_SELF)
 local PATTERN_LOOT_PUSHED_SELF_MULTI = BuildPattern(LOOT_ITEM_PUSHED_SELF_MULTIPLE)
 local PATTERN_LOOT_PUSHED_SELF = BuildPattern(LOOT_ITEM_PUSHED_SELF)
 -- CHAT_MSG_CURRENCY 通货获得模式
-local PATTERN_CURRENCY_MULTI = BuildPattern(CURRENCY_GAINED_MULTIPLE)
-local PATTERN_CURRENCY = BuildPattern(CURRENCY_GAINED)
+local CURRENCY_CHAT_PATTERNS = {}
+local function AddCurrencyChatPattern(globalString)
+    if type(globalString) == "string" and globalString ~= "" then
+        tinsert(CURRENCY_CHAT_PATTERNS, BuildPattern(globalString))
+    end
+end
+AddCurrencyChatPattern(CURRENCY_GAINED_MULTIPLE)
+AddCurrencyChatPattern(CURRENCY_GAINED)
+AddCurrencyChatPattern(CURRENCY_GAINED_MULTIPLE_BONUS)
 -- CHAT_MSG_MONEY 金币拾取模式
 local PATTERN_YOU_LOOT_MONEY = BuildPattern(YOU_LOOT_MONEY)
 local PATTERN_LOOT_MONEY_SPLIT = BuildPattern(LOOT_MONEY_SPLIT)
@@ -52,10 +61,13 @@ local PATTERN_LOOT_MONEY_SPLIT = BuildPattern(LOOT_MONEY_SPLIT)
 local animContainer = CreateFrame("Frame", nil, UIParent)
 animContainer:Hide()
 
--- 从物品/货币链接中提取稳定的ID用于去重（忽略bonus ID等实例差异）
-local function GetIDFromLink(link)
-    if not link then return nil end
-    return link:match("item:(%d+)") or link:match("currency:(%d+)")
+-- 统一去重操作，保证 toast/chat/loot 共享同一套规则
+local function RememberShown(link)
+    return Util.MarkRecentlyShown(recentlyShown, link, GetTime())
+end
+
+local function WasShownRecently(link)
+    return Util.WasRecentlyShown(recentlyShown, link, GetTime(), RECENTLY_SHOWN_WINDOW)
 end
 
 -- Anchor Frame for positioning
@@ -736,10 +748,7 @@ f:SetScript("OnEvent", function(self, event, ...)
 
         local isCurrency = (cached.slotType == Enum.LootSlotType.Currency)
         ShowItemLoot(cached.link, cached.quantity, cached.texture, cached.quality, isCurrency)
-        local dedupKey = GetIDFromLink(cached.link)
-        if dedupKey then
-            recentlyShown[dedupKey] = GetTime()
-        end
+        RememberShown(cached.link)
         lootCache[slot] = nil
     elseif event == "LOOT_CLOSED" then
         isLooting = false
@@ -748,7 +757,7 @@ f:SetScript("OnEvent", function(self, event, ...)
         -- 清理过期的去重记录
         local now = GetTime()
         for k, v in pairs(recentlyShown) do
-            if now - v > 5 then
+            if now - v > RECENTLY_SHOWN_WINDOW then
                 recentlyShown[k] = nil
             end
         end
@@ -790,25 +799,20 @@ f:SetScript("OnEvent", function(self, event, ...)
         if not link then return end
         quantity = tonumber(quantity) or 1
         -- 去重：跳过已由 LOOT_SLOT_CLEARED 或 SHOW_LOOT_TOAST 显示的物品
-        local dedupKey = GetIDFromLink(link)
-        if dedupKey and recentlyShown[dedupKey] and (GetTime() - recentlyShown[dedupKey]) < 5 then return end
+        local wasShownRecently = WasShownRecently(link)
+        if wasShownRecently then return end
         local _, _, quality, _, _, _, _, _, _, texture = GetItemInfo(link)
         ShowItemLoot(link, quantity, texture, quality, false)
-        if dedupKey then recentlyShown[dedupKey] = GetTime() end
+        RememberShown(link)
     elseif event == "CHAT_MSG_CURRENCY" then
         if not LootGDB or not LootGDB.enabled then return end
         local message = ...
-        local link, quantity
-        link, quantity = message:match(PATTERN_CURRENCY_MULTI)
-        if not link then
-            link = message:match(PATTERN_CURRENCY)
-            if link then quantity = 1 end
-        end
+        local link, quantity = Util.ParseCurrencyChatMessage(message, CURRENCY_CHAT_PATTERNS)
         if not link then return end
         quantity = tonumber(quantity) or 1
         -- 去重：跳过已由 LOOT_SLOT_CLEARED 显示的通货
-        local dedupKey = GetIDFromLink(link)
-        if dedupKey and recentlyShown[dedupKey] and (GetTime() - recentlyShown[dedupKey]) < 5 then return end
+        local wasShownRecently = WasShownRecently(link)
+        if wasShownRecently then return end
         local texture, quality
         local currencyInfo = C_CurrencyInfo.GetCurrencyInfoFromLink(link)
         if currencyInfo then
@@ -816,7 +820,7 @@ f:SetScript("OnEvent", function(self, event, ...)
             quality = currencyInfo.quality
         end
         ShowItemLoot(link, quantity, texture, quality, true)
-        if dedupKey then recentlyShown[dedupKey] = GetTime() end
+        RememberShown(link)
     elseif event == "CHAT_MSG_MONEY" then
         if not LootGDB or not LootGDB.enabled then return end
         -- 去重：如果 PLAYER_MONEY 近期已显示过金币，跳过
@@ -833,9 +837,9 @@ f:SetScript("OnEvent", function(self, event, ...)
         if not link or link == "" then return end
         if typeIdentifier == "money" then return end
         -- 去重：跳过已由 LOOT_SLOT_CLEARED 显示的物品
-        local dedupKey = GetIDFromLink(link)
-        if dedupKey and recentlyShown[dedupKey] and (GetTime() - recentlyShown[dedupKey]) < 5 then return end
-        quantity = quantity or 1
+        local wasShownRecently = WasShownRecently(link)
+        if wasShownRecently then return end
+        quantity = tonumber(quantity) or 1
         local isCurrency = (typeIdentifier == "currency")
         local texture, quality
         if isCurrency then
@@ -850,6 +854,7 @@ f:SetScript("OnEvent", function(self, event, ...)
             quality = q
         end
         ShowItemLoot(link, quantity, texture, quality, isCurrency)
+        RememberShown(link)
     elseif event == "CHAT_MSG_COMBAT_FACTION_CHANGE" then
         if not LootGDB or not LootGDB.enabled then return end
         local message = ...
