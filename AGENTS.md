@@ -36,7 +36,10 @@ WoW Event → OnEvent handler → ShowItemLoot() or CreateScrollingMessage()
 
 ## Testing
 
-No automated tests. Manual testing only:
+Python unit tests cover the packaging script:
+- `python3 -m unittest tests/test_package.py` — verify `scripts/package.py` packaging and release flows
+
+Manual addon testing:
 - `/lootg test` — display a test loot notification
 - `/lootg debug` — print debug state
 - Right-click the addon compartment button for test display
@@ -53,4 +56,9 @@ No automated tests. Manual testing only:
 - `GetCoinTextureString()` returns text with inline coin icons — do not add a separate icon parameter when displaying money.
 - The addon uses WoW's frame pooling pattern to avoid GC pressure during rapid loot events.
 - Localization keys must be added to all three language blocks in Locales.lua (en default, zhCN, zhTW).
+- Release packaging is handled by `scripts/package.py`:
+  - `python3 scripts/package.py package` builds a zip from the current `LootG.toc` version
+  - `python3 scripts/package.py release <version>` updates version/changelog and then builds the zip
+- Release zips are written as `LootG-<version>.zip`, and zip contents are nested under a top-level `LootG/` directory.
+- `*.zip` is gitignored; generated release archives should not be committed.
 - Language: code comments and commit messages are in Chinese.

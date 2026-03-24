@@ -6,6 +6,7 @@ import sys
 import zipfile
 
 
+ARCHIVE_ROOT_DIR = "LootG"
 RELEASE_FILES = (
     "LootG.toc",
     "Locales.lua",
@@ -117,6 +118,10 @@ def sync_readme_changelog(readme_path, new_version, notes, changelog_heading):
     readme_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def archive_member_name(relative_path):
+    return f"{ARCHIVE_ROOT_DIR}/{relative_path}"
+
+
 def build_release_zip(repo_root, version):
     archive_path = repo_root / f"LootG-{version}.zip"
     if archive_path.exists():
@@ -127,39 +132,73 @@ def build_release_zip(repo_root, version):
             file_path = repo_root / relative_path
             if not file_path.exists():
                 raise FileNotFoundError(f"missing release file: {relative_path}")
-            archive.write(file_path, arcname=relative_path)
+            archive.write(file_path, arcname=archive_member_name(relative_path))
 
     return archive_path
 
 
-def main(argv=None):
-    parser = argparse.ArgumentParser(description="Update LootG version, changelog, and release zip.")
-    parser.add_argument("version", help="semantic version, for example 1.2.1")
-    args = parser.parse_args(argv)
-
-    repo_root = pathlib.Path(__file__).resolve().parents[1]
+def package_current_version(repo_root):
     toc_path = repo_root / "LootG.toc"
     current_version = read_current_toc_version(toc_path)
-    new_version = validate_version(args.version, current_version)
+    archive_path = build_release_zip(repo_root, current_version)
 
-    update_toc_version(toc_path, new_version)
+    print(f"Using current version: {current_version}")
+    print(f"Created archive: {archive_path.name}")
+    return 0
+
+
+def release_new_version(repo_root, new_version):
+    toc_path = repo_root / "LootG.toc"
+    current_version = read_current_toc_version(toc_path)
+    validated_version = validate_version(new_version, current_version)
+
+    update_toc_version(toc_path, validated_version)
     sync_readme_changelog(
         repo_root / "README.md",
-        new_version,
-        release_notes_for_version(new_version, "en"),
+        validated_version,
+        release_notes_for_version(validated_version, "en"),
         "## Changelog",
     )
     sync_readme_changelog(
         repo_root / "README_zhCN.md",
-        new_version,
-        release_notes_for_version(new_version, "zhCN"),
+        validated_version,
+        release_notes_for_version(validated_version, "zhCN"),
         "## 更新日志",
     )
-    archive_path = build_release_zip(repo_root, new_version)
+    archive_path = build_release_zip(repo_root, validated_version)
 
-    print(f"Updated version: {current_version} -> {new_version}")
+    print(f"Updated version: {current_version} -> {validated_version}")
     print(f"Created archive: {archive_path.name}")
     return 0
+
+
+def build_parser():
+    parser = argparse.ArgumentParser(description="Package LootG or prepare a new release.")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    subparsers.add_parser("package", help="build a release zip using the current toc version")
+
+    release_parser = subparsers.add_parser("release", help="bump version, update changelog, and build zip")
+    release_parser.add_argument("version", help="semantic version, for example 1.2.1")
+
+    return parser
+
+
+def main(argv=None, repo_root=None):
+    parser = build_parser()
+    args = parser.parse_args(argv)
+
+    if repo_root is None:
+        repo_root = pathlib.Path(__file__).resolve().parents[1]
+    else:
+        repo_root = pathlib.Path(repo_root)
+
+    if args.command == "package":
+        return package_current_version(repo_root)
+    if args.command == "release":
+        return release_new_version(repo_root, args.version)
+
+    parser.error(f"unknown command: {args.command}")
 
 
 if __name__ == "__main__":
