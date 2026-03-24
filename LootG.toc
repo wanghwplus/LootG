@@ -3,7 +3,7 @@
 ## Notes: Dynamically scroll looted items in the center of the screen.
 ## Notes-zhCN: 使拾取的物品在屏幕中心动态滚动显示。
 ## Author: Claude (AI Assistant)
-## Version: 1.0.0
+## Version: 1.2.1
 ## SavedVariables: LootGDB
 ## AddonCompartmentFunc: LootG_OnCompartmentClick
 ## IconTexture: Interface\AddOns\LootG\icon.png

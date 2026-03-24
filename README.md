@@ -11,10 +11,14 @@
 
 ### Loot Notification
 - **Scrolling Loot Display** - Looted items scroll with smooth animation
+- **Optimized Message Flow** - Uses a shared animation loop with overlap avoidance and smoother fading
 - **Item Quality Colors** - Items are displayed with their quality colors (Common, Uncommon, Rare, Epic, Legendary)
 - **Item Icons** - Shows item icons alongside the item name
 - **Bag Count** - Displays the total count of the item in your bags (only when > 0)
-- **Currency & Gold Support** - Also displays looted currency and gold
+- **Container & Chest Rewards** - Supports items, currency, and gold from opened containers and treasure chests
+- **Currency & Gold Support** - Displays loot, currency, and gold from all supported sources
+- **Duplicate Protection** - Deduplicates repeated notifications for dungeon drops, personal currency, and chest rewards
+- **Reputation Change Notification** - Displays reputation gains and losses using the matching chat color
 - **Skill Up Notification** - Displays profession skill level increases
 - **Customizable Position** - Drag the blue anchor to position the display anywhere on screen
 - **Clean Interface** - Only shows YOUR loot, not party/raid members
@@ -115,6 +119,13 @@ Leave Combat    (green flash text)
 *Coming soon*
 
 ## Changelog
+
+### v1.2.1
+- Added loot, currency, and gold notifications from opened containers, and restored missing chest and quest reward messages
+- Fixed duplicate or mixed notifications for personal currency, dungeon loot, and chest gold rewards
+- Fixed gold amount scaling, currency link fallback parsing, and duplicate gold icon display issues
+- Improved scrolling message updates with one shared animation loop, overlap avoidance, and smoother fading
+- Fixed profession skill notifications to use stable fileID icons and more reliable profession name matching
 
 ### v1.2.0
 - Gold display now shows all sources (vendor, quest, loot, mail, etc.)

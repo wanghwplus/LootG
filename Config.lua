@@ -390,9 +390,16 @@ function LootG:InitializeConfig()
     mainTitle:SetPoint("TOPLEFT", mainCanvas, "TOPLEFT", 16, -16)
     mainTitle:SetText("LootG")
 
+    local addonVersion = ""
+    if C_AddOns and C_AddOns.GetAddOnMetadata then
+        addonVersion = C_AddOns.GetAddOnMetadata(addonName, "Version") or ""
+    elseif GetAddOnMetadata then
+        addonVersion = GetAddOnMetadata(addonName, "Version") or ""
+    end
+
     local mainVersion = mainCanvas:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     mainVersion:SetPoint("TOPLEFT", mainTitle, "BOTTOMLEFT", 0, -8)
-    mainVersion:SetText("v1.0.0")
+    mainVersion:SetText(addonVersion ~= "" and ("v" .. addonVersion) or "")
 
     local mainDesc = mainCanvas:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
     mainDesc:SetPoint("TOPLEFT", mainVersion, "BOTTOMLEFT", 0, -16)
