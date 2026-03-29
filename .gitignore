@@ -15,3 +15,7 @@ CLAUDE.md
 *.temp
 *.log
 *.zip
+
+# Python
+__pycache__/
+*.pyc
