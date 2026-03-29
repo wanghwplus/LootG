@@ -6,7 +6,7 @@ local Util = LootG.Util
 
 function Util.GetIDFromLink(link)
     if not link then return nil end
-    return link:match("item:(%d+)") or link:match("currency:(%d+)")
+    return string.match(link, "item:(%d+)") or string.match(link, "currency:(%d+)")
 end
 
 function Util.MarkRecentlyShown(recentlyShown, link, now)
@@ -34,10 +34,10 @@ end
 local function FindMessageLink(message, linkType)
     local colorizedPattern = "(|c%x+|H" .. linkType .. ":[^|]+|h.-|h|r)"
     local plainPattern = "(|H" .. linkType .. ":[^|]+|h.-|h)"
-    local startPos, endPos, link = message:find(colorizedPattern)
+    local startPos, endPos, link = string.find(message, colorizedPattern)
 
     if not link then
-        startPos, endPos, link = message:find(plainPattern)
+        startPos, endPos, link = string.find(message, plainPattern)
     end
 
     return link, startPos, endPos
@@ -46,7 +46,7 @@ end
 function Util.ParseCurrencyChatMessage(message, patterns)
     if patterns then
         for _, pattern in ipairs(patterns) do
-            local link, quantity = message:match(pattern)
+            local link, quantity = string.match(message, pattern)
             if link then
                 return link, tonumber(quantity) or 1
             end
@@ -58,9 +58,9 @@ function Util.ParseCurrencyChatMessage(message, patterns)
         return nil, nil
     end
 
-    local quantity = message:match("x(%d+)", endPos and (endPos + 1) or 1)
+    local quantity = string.match(message, "x(%d+)", endPos and (endPos + 1) or 1)
     if not quantity then
-        quantity = message:match("x(%d+)")
+        quantity = string.match(message, "x(%d+)")
     end
 
     return link, tonumber(quantity) or 1
