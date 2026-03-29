@@ -786,14 +786,14 @@ f:SetScript("OnEvent", function(self, event, ...)
         local message = tostring((...))  -- strip taint from secure string
         local link, quantity
         -- 先匹配带数量的模式（x%d），再匹配单件模式
-        link, quantity = message:match(PATTERN_LOOT_SELF_MULTI)
-        if not link then link, quantity = message:match(PATTERN_LOOT_PUSHED_SELF_MULTI) end
+        link, quantity = string.match(message, PATTERN_LOOT_SELF_MULTI)
+        if not link then link, quantity = string.match(message, PATTERN_LOOT_PUSHED_SELF_MULTI) end
         if not link then
-            link = message:match(PATTERN_LOOT_SELF)
+            link = string.match(message, PATTERN_LOOT_SELF)
             if link then quantity = 1 end
         end
         if not link then
-            link = message:match(PATTERN_LOOT_PUSHED_SELF)
+            link = string.match(message, PATTERN_LOOT_PUSHED_SELF)
             if link then quantity = 1 end
         end
         if not link then return end
@@ -826,8 +826,8 @@ f:SetScript("OnEvent", function(self, event, ...)
         -- 去重：如果 PLAYER_MONEY 近期已显示过金币，跳过
         if (GetTime() - lastMoneyShownTime) < 2 then return end
         local message = tostring((...))  -- strip taint from secure string
-        local moneyText = message:match(PATTERN_YOU_LOOT_MONEY)
-        if not moneyText then moneyText = message:match(PATTERN_LOOT_MONEY_SPLIT) end
+        local moneyText = string.match(message, PATTERN_YOU_LOOT_MONEY)
+        if not moneyText then moneyText = string.match(message, PATTERN_LOOT_MONEY_SPLIT) end
         if not moneyText then return end
         CreateScrollingMessage(moneyText, nil)
         lastMoneyShownTime = GetTime()
@@ -874,7 +874,7 @@ f:SetScript("OnEvent", function(self, event, ...)
             pattern = ERR_SKILL_UP_SI:gsub("%%%d*%$?s", "\001"):gsub("%%%d*%$?d", "\002")
             pattern = pattern:gsub("([%(%)%.%%%+%-%*%?%[%]%^%$])", "%%%1")
             pattern = pattern:gsub("\001", "(.-)"):gsub("\002", "(%%d+)")
-            skillName, skillLevel = message:match(pattern)
+            skillName, skillLevel = string.match(message, pattern)
         end
         -- Try to find the profession icon matching skillName
         local skillIcon = 136830 -- INV_Misc_Book_11 fileID
