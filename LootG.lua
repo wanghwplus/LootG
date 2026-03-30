@@ -783,7 +783,9 @@ f:SetScript("OnEvent", function(self, event, ...)
         previousMoney = currentMoney
     elseif event == "CHAT_MSG_LOOT" then
         if not LootGDB or not LootGDB.enabled then return end
-        local message = tostring((...))  -- strip taint from secure string
+        local rawMsg = ...
+        if not rawMsg then return end
+        local message = rawMsg .. ""  -- copy to strip taint
         local link, quantity
         -- 先匹配带数量的模式（x%d），再匹配单件模式
         link, quantity = string.match(message, PATTERN_LOOT_SELF_MULTI)
@@ -806,7 +808,9 @@ f:SetScript("OnEvent", function(self, event, ...)
         RememberShown(link)
     elseif event == "CHAT_MSG_CURRENCY" then
         if not LootGDB or not LootGDB.enabled then return end
-        local message = tostring((...))  -- strip taint from secure string
+        local rawMsg = ...
+        if not rawMsg then return end
+        local message = rawMsg .. ""  -- copy to strip taint
         local link, quantity = Util.ParseCurrencyChatMessage(message, CURRENCY_CHAT_PATTERNS)
         if not link then return end
         quantity = tonumber(quantity) or 1
@@ -825,7 +829,9 @@ f:SetScript("OnEvent", function(self, event, ...)
         if not LootGDB or not LootGDB.enabled then return end
         -- 去重：如果 PLAYER_MONEY 近期已显示过金币，跳过
         if (GetTime() - lastMoneyShownTime) < 2 then return end
-        local message = tostring((...))  -- strip taint from secure string
+        local rawMsg = ...
+        if not rawMsg then return end
+        local message = rawMsg .. ""  -- copy to strip taint
         local moneyText = string.match(message, PATTERN_YOU_LOOT_MONEY)
         if not moneyText then moneyText = string.match(message, PATTERN_LOOT_MONEY_SPLIT) end
         if not moneyText then return end
@@ -857,13 +863,17 @@ f:SetScript("OnEvent", function(self, event, ...)
         RememberShown(link)
     elseif event == "CHAT_MSG_COMBAT_FACTION_CHANGE" then
         if not LootGDB or not LootGDB.enabled then return end
-        local message = tostring((...))  -- strip taint from secure string
+        local rawMsg = ...
+        if not rawMsg then return end
+        local message = rawMsg .. ""  -- copy to strip taint
         local info = ChatTypeInfo["COMBAT_FACTION_CHANGE"]
         local colorCode = info and format("|cff%02x%02x%02x", info.r * 255, info.g * 255, info.b * 255) or "|cff00ffa0"
         CreateScrollingMessage(colorCode .. message .. "|r", 236681) -- Achievement_Reputation_01 fileID
     elseif event == "CHAT_MSG_SKILL" then
         if not LootGDB or not LootGDB.enabled then return end
-        local message = tostring((...))  -- strip taint from secure string
+        local rawMsg = ...
+        if not rawMsg then return end
+        local message = rawMsg .. ""  -- copy to strip taint
         local info = ChatTypeInfo["SKILL"]
         local colorCode = info and format("|cff%02x%02x%02x", info.r * 255, info.g * 255, info.b * 255) or "|cff5555ff"
         local skillName, skillLevel
