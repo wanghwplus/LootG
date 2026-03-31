@@ -20,6 +20,8 @@ f:RegisterEvent("PLAYER_REGEN_DISABLED")
 f:RegisterEvent("PLAYER_REGEN_ENABLED")
 f:RegisterEvent("PLAYER_ENTERING_WORLD")
 f:RegisterEvent("MAIL_SHOW")
+f:RegisterEvent("MERCHANT_SHOW")
+f:RegisterEvent("AUCTION_HOUSE_SHOW")
 
 local activeMessages = {}
 local messagePool = {}
@@ -765,8 +767,9 @@ f:SetScript("OnEvent", function(self, event, ...)
                 recentlyShown[k] = nil
             end
         end
-    elseif event == "PLAYER_ENTERING_WORLD" or event == "MAIL_SHOW" then
-        -- 同步 previousMoney，避免登录结算或邮箱打开前的金币偏差混入后续差值计算
+    elseif event == "PLAYER_ENTERING_WORLD" or event == "MAIL_SHOW"
+        or event == "MERCHANT_SHOW" or event == "AUCTION_HOUSE_SHOW" then
+        -- 同步 previousMoney，避免金币偏差混入后续差值计算
         previousMoney = GetMoney()
     elseif event == "PLAYER_MONEY" then
         if not LootGDB or not LootGDB.enabled then
@@ -787,6 +790,14 @@ f:SetScript("OnEvent", function(self, event, ...)
                 lastMoneyShownTime = GetTime()
             else
                 -- 非拾取场景（邮件、拍卖行等）：延迟显示，优先让 CHAT_MSG_MONEY 提供精确金额
+                -- 如果已有待显示的金额（连续出售等），先立即显示上一条，避免丢失
+                if pendingMoneyGain then
+                    local prevText = C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString
+                        and C_CurrencyInfo.GetCoinTextureString(pendingMoneyGain)
+                        or GetCoinTextureString(pendingMoneyGain)
+                    CreateScrollingMessage(prevText, nil)
+                    lastMoneyShownTime = GetTime()
+                end
                 pendingMoneyGain = gained
                 if pendingMoneyTimer then pendingMoneyTimer:Cancel() end
                 pendingMoneyTimer = C_Timer.NewTimer(0.15, function()
