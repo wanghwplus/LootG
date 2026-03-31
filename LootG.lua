@@ -18,6 +18,10 @@ f:RegisterEvent("CHAT_MSG_CURRENCY")
 f:RegisterEvent("CHAT_MSG_MONEY")
 f:RegisterEvent("PLAYER_REGEN_DISABLED")
 f:RegisterEvent("PLAYER_REGEN_ENABLED")
+f:RegisterEvent("PLAYER_ENTERING_WORLD")
+f:RegisterEvent("MAIL_SHOW")
+f:RegisterEvent("MERCHANT_SHOW")
+f:RegisterEvent("AUCTION_HOUSE_SHOW")
 
 local activeMessages = {}
 local messagePool = {}
@@ -27,6 +31,8 @@ local isLooting = false
 local lootMoneyCopper = 0 -- 缓存拾取窗口中的金币数额（铜币），避免与其他来源混淆
 local recentlyShown = {} -- 去重：记录已由 LOOT_SLOT_CLEARED 显示的物品
 local lastMoneyShownTime = 0 -- 去重：PLAYER_MONEY 与 CHAT_MSG_MONEY 之间
+local pendingMoneyGain = nil -- 延迟显示的 PLAYER_MONEY 金额（铜币），等待 CHAT_MSG_MONEY 覆盖
+local pendingMoneyTimer = nil -- 延迟显示的定时器
 local RECENTLY_SHOWN_WINDOW = 5
 local Util = LootG.Util
 
@@ -761,6 +767,10 @@ f:SetScript("OnEvent", function(self, event, ...)
                 recentlyShown[k] = nil
             end
         end
+    elseif event == "PLAYER_ENTERING_WORLD" or event == "MAIL_SHOW"
+        or event == "MERCHANT_SHOW" or event == "AUCTION_HOUSE_SHOW" then
+        -- 同步 previousMoney，避免金币偏差混入后续差值计算
+        previousMoney = GetMoney()
     elseif event == "PLAYER_MONEY" then
         if not LootGDB or not LootGDB.enabled then
             previousMoney = GetMoney()
@@ -773,12 +783,35 @@ f:SetScript("OnEvent", function(self, event, ...)
             if isLooting and lootMoneyCopper > 0 then
                 gained = lootMoneyCopper
                 lootMoneyCopper = 0
+                local moneyText = C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString
+                    and C_CurrencyInfo.GetCoinTextureString(gained)
+                    or GetCoinTextureString(gained)
+                CreateScrollingMessage(moneyText, nil)
+                lastMoneyShownTime = GetTime()
+            else
+                -- 非拾取场景（邮件、拍卖行等）：延迟显示，优先让 CHAT_MSG_MONEY 提供精确金额
+                -- 如果已有待显示的金额（连续出售等），先立即显示上一条，避免丢失
+                if pendingMoneyGain then
+                    local prevText = C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString
+                        and C_CurrencyInfo.GetCoinTextureString(pendingMoneyGain)
+                        or GetCoinTextureString(pendingMoneyGain)
+                    CreateScrollingMessage(prevText, nil)
+                    lastMoneyShownTime = GetTime()
+                end
+                pendingMoneyGain = gained
+                if pendingMoneyTimer then pendingMoneyTimer:Cancel() end
+                pendingMoneyTimer = C_Timer.NewTimer(0.15, function()
+                    if pendingMoneyGain then
+                        local moneyText = C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString
+                            and C_CurrencyInfo.GetCoinTextureString(pendingMoneyGain)
+                            or GetCoinTextureString(pendingMoneyGain)
+                        CreateScrollingMessage(moneyText, nil)
+                        lastMoneyShownTime = GetTime()
+                        pendingMoneyGain = nil
+                    end
+                    pendingMoneyTimer = nil
+                end)
             end
-            local moneyText = C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString
-                and C_CurrencyInfo.GetCoinTextureString(gained)
-                or GetCoinTextureString(gained)
-            CreateScrollingMessage(moneyText, nil)
-            lastMoneyShownTime = GetTime()
         end
         previousMoney = currentMoney
     elseif event == "CHAT_MSG_LOOT" then
@@ -827,14 +860,19 @@ f:SetScript("OnEvent", function(self, event, ...)
         RememberShown(link)
     elseif event == "CHAT_MSG_MONEY" then
         if not LootGDB or not LootGDB.enabled then return end
-        -- 去重：如果 PLAYER_MONEY 近期已显示过金币，跳过
-        if (GetTime() - lastMoneyShownTime) < 2 then return end
         local rawMsg = ...
         if not rawMsg then return end
         local message = rawMsg .. ""  -- copy to strip taint
         local moneyText = string.match(message, PATTERN_YOU_LOOT_MONEY)
         if not moneyText then moneyText = string.match(message, PATTERN_LOOT_MONEY_SPLIT) end
         if not moneyText then return end
+        -- 取消待显示的 PLAYER_MONEY 延迟消息，使用 CHAT_MSG_MONEY 的精确金额
+        if pendingMoneyGain then
+            pendingMoneyGain = nil
+            if pendingMoneyTimer then pendingMoneyTimer:Cancel(); pendingMoneyTimer = nil end
+        end
+        -- 去重：如果近期已显示过金币（拾取窗口场景），跳过
+        if (GetTime() - lastMoneyShownTime) < 2 then return end
         CreateScrollingMessage(moneyText, nil)
         lastMoneyShownTime = GetTime()
     elseif event == "SHOW_LOOT_TOAST" then
