@@ -120,6 +120,9 @@ Leave Combat    (green flash text)
 
 ## Changelog
 
+### v1.2.2
+- Bug fix
+
 ### v1.2.1
 - Added loot, currency, and gold notifications from opened containers, and restored missing chest and quest reward messages
 - Fixed duplicate or mixed notifications for personal currency, dungeon loot, and chest gold rewards
