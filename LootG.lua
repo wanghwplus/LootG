@@ -18,6 +18,8 @@ f:RegisterEvent("CHAT_MSG_CURRENCY")
 f:RegisterEvent("CHAT_MSG_MONEY")
 f:RegisterEvent("PLAYER_REGEN_DISABLED")
 f:RegisterEvent("PLAYER_REGEN_ENABLED")
+f:RegisterEvent("PLAYER_ENTERING_WORLD")
+f:RegisterEvent("MAIL_SHOW")
 
 local activeMessages = {}
 local messagePool = {}
@@ -763,6 +765,9 @@ f:SetScript("OnEvent", function(self, event, ...)
                 recentlyShown[k] = nil
             end
         end
+    elseif event == "PLAYER_ENTERING_WORLD" or event == "MAIL_SHOW" then
+        -- 同步 previousMoney，避免登录结算或邮箱打开前的金币偏差混入后续差值计算
+        previousMoney = GetMoney()
     elseif event == "PLAYER_MONEY" then
         if not LootGDB or not LootGDB.enabled then
             previousMoney = GetMoney()
