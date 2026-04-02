@@ -39,15 +39,24 @@ local Util = LootG.Util
 -- Detaint a secret string by rebuilding it from raw bytes
 local function DetaintString(rawMsg)
     if type(rawMsg) ~= "string" then return rawMsg end
-    -- Try byte-level copy first (bypasses secret string protection)
-    local ok, result = pcall(function()
-        return string.char(string.byte(rawMsg, 1, #rawMsg))
+    -- Try string.format first (simplest detaint method)
+    local ok, result = pcall(string.format, "%s", rawMsg)
+    if ok and result then return result end
+    -- Fallback: byte-level copy without using # operator (which can error on tainted strings)
+    ok, result = pcall(function()
+        local bytes = {}
+        local i = 1
+        while true do
+            local b = string.byte(rawMsg, i)
+            if not b then break end
+            bytes[i] = b
+            i = i + 1
+        end
+        if #bytes == 0 then return nil end
+        return string.char(unpack(bytes))
     end)
     if ok and result then return result end
-    -- Fallback: try tostring
-    ok, result = pcall(tostring, rawMsg)
-    if ok and result then return result end
-    return rawMsg
+    return nil
 end
 
 -- 构建本地化无关的聊天消息匹配模式
@@ -836,6 +845,7 @@ f:SetScript("OnEvent", function(self, event, ...)
         local rawMsg = ...
         if not rawMsg then return end
         local message = DetaintString(rawMsg)
+        if not message then return end
         local link, quantity
         -- 先匹配带数量的模式（x%d），再匹配单件模式
         link, quantity = string.match(message, PATTERN_LOOT_SELF_MULTI)
@@ -861,6 +871,7 @@ f:SetScript("OnEvent", function(self, event, ...)
         local rawMsg = ...
         if not rawMsg then return end
         local message = DetaintString(rawMsg)
+        if not message then return end
         local link, quantity = Util.ParseCurrencyChatMessage(message, CURRENCY_CHAT_PATTERNS)
         if not link then return end
         quantity = tonumber(quantity) or 1
@@ -880,6 +891,7 @@ f:SetScript("OnEvent", function(self, event, ...)
         local rawMsg = ...
         if not rawMsg then return end
         local message = DetaintString(rawMsg)
+        if not message then return end
         local moneyText = string.match(message, PATTERN_YOU_LOOT_MONEY)
         if not moneyText then moneyText = string.match(message, PATTERN_LOOT_MONEY_SPLIT) end
         if not moneyText then return end
@@ -921,6 +933,7 @@ f:SetScript("OnEvent", function(self, event, ...)
         local rawMsg = ...
         if not rawMsg then return end
         local message = DetaintString(rawMsg)
+        if not message then return end
         local info = ChatTypeInfo["COMBAT_FACTION_CHANGE"]
         local colorCode = info and format("|cff%02x%02x%02x", info.r * 255, info.g * 255, info.b * 255) or "|cff00ffa0"
         CreateScrollingMessage(colorCode .. message .. "|r", 236681) -- Achievement_Reputation_01 fileID
@@ -929,6 +942,7 @@ f:SetScript("OnEvent", function(self, event, ...)
         local rawMsg = ...
         if not rawMsg then return end
         local message = DetaintString(rawMsg)
+        if not message then return end
         local info = ChatTypeInfo["SKILL"]
         local colorCode = info and format("|cff%02x%02x%02x", info.r * 255, info.g * 255, info.b * 255) or "|cff5555ff"
         local skillName, skillLevel
