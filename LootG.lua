@@ -766,9 +766,12 @@ f:SetScript("OnEvent", function(self, event, ...)
         local cached = lootCache[slot]
         if not cached or not cached.link then return end
 
-        local isCurrency = (cached.slotType == Enum.LootSlotType.Currency)
-        ShowItemLoot(cached.link, cached.quantity, cached.texture, cached.quality, isCurrency)
-        RememberShown(cached.link)
+        -- 去重：跳过已由 CHAT_MSG_CURRENCY 或 CHAT_MSG_LOOT 显示的物品
+        if not WasShownRecently(cached.link) then
+            local isCurrency = (cached.slotType == Enum.LootSlotType.Currency)
+            ShowItemLoot(cached.link, cached.quantity, cached.texture, cached.quality, isCurrency)
+            RememberShown(cached.link)
+        end
         lootCache[slot] = nil
     elseif event == "LOOT_CLOSED" then
         isLooting = false
