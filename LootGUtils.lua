@@ -44,23 +44,26 @@ local function FindMessageLink(message, linkType)
 end
 
 function Util.ParseCurrencyChatMessage(message, patterns)
+    if type(message) ~= "string" then return nil, nil end
+
     if patterns then
         for _, pattern in ipairs(patterns) do
-            local link, quantity = string.match(message, pattern)
-            if link then
+            local ok, link, quantity = pcall(string.match, message, pattern)
+            if ok and link then
                 return link, tonumber(quantity) or 1
             end
         end
     end
 
-    local link, _, endPos = FindMessageLink(message, "currency")
-    if not link then
+    local ok, link, _, endPos = pcall(FindMessageLink, message, "currency")
+    if not ok or not link then
         return nil, nil
     end
 
-    local quantity = string.match(message, "x(%d+)", endPos and (endPos + 1) or 1)
-    if not quantity then
-        quantity = string.match(message, "x(%d+)")
+    local ok2, quantity = pcall(string.match, message, "x(%d+)", endPos and (endPos + 1) or 1)
+    if not ok2 or not quantity then
+        local ok3, q = pcall(string.match, message, "x(%d+)")
+        if ok3 then quantity = q end
     end
 
     return link, tonumber(quantity) or 1

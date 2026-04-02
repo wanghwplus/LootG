@@ -818,7 +818,8 @@ f:SetScript("OnEvent", function(self, event, ...)
         if not LootGDB or not LootGDB.enabled then return end
         local rawMsg = ...
         if not rawMsg then return end
-        local message = rawMsg .. ""  -- copy to strip taint
+        local ok, message = pcall(tostring, rawMsg)
+        if not ok then message = rawMsg end
         local link, quantity
         -- 先匹配带数量的模式（x%d），再匹配单件模式
         link, quantity = string.match(message, PATTERN_LOOT_SELF_MULTI)
@@ -843,7 +844,8 @@ f:SetScript("OnEvent", function(self, event, ...)
         if not LootGDB or not LootGDB.enabled then return end
         local rawMsg = ...
         if not rawMsg then return end
-        local message = rawMsg .. ""  -- copy to strip taint
+        local ok, message = pcall(tostring, rawMsg)
+        if not ok then message = rawMsg end
         local link, quantity = Util.ParseCurrencyChatMessage(message, CURRENCY_CHAT_PATTERNS)
         if not link then return end
         quantity = tonumber(quantity) or 1
@@ -862,7 +864,8 @@ f:SetScript("OnEvent", function(self, event, ...)
         if not LootGDB or not LootGDB.enabled then return end
         local rawMsg = ...
         if not rawMsg then return end
-        local message = rawMsg .. ""  -- copy to strip taint
+        local ok, message = pcall(tostring, rawMsg)
+        if not ok then message = rawMsg end
         local moneyText = string.match(message, PATTERN_YOU_LOOT_MONEY)
         if not moneyText then moneyText = string.match(message, PATTERN_LOOT_MONEY_SPLIT) end
         if not moneyText then return end
