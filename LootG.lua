@@ -39,11 +39,9 @@ local Util = LootG.Util
 -- Detaint a secret string by rebuilding it from raw bytes
 local function DetaintString(rawMsg)
     if type(rawMsg) ~= "string" then return rawMsg end
-    -- Try string.format first (simplest detaint method)
-    local ok, result = pcall(string.format, "%s", rawMsg)
-    if ok and result then return result end
-    -- Fallback: byte-level copy without using # operator (which can error on tainted strings)
-    ok, result = pcall(function()
+    -- Byte-level copy to produce a clean, untainted string
+    -- string.format("%s", ...) does NOT reliably detaint secret strings
+    local ok, result = pcall(function()
         local bytes = {}
         local i = 1
         while true do
