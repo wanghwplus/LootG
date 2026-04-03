@@ -120,6 +120,9 @@ Leave Combat    (green flash text)
 
 ## Changelog
 
+### v1.2.3
+- Bug fix
+
 ### v1.2.2
 - Bug fix
 
