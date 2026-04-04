@@ -25,6 +25,8 @@ function Util.WasRecentlyShown(recentlyShown, link, now, windowSeconds)
 
     local shownAt = recentlyShown[dedupKey]
     if shownAt and (now - shownAt) < (windowSeconds or 5) then
+        -- Consume the entry so a subsequent loot of the same item is not blocked
+        recentlyShown[dedupKey] = nil
         return true, dedupKey
     end
 

@@ -51,4 +51,19 @@ do
     assert_equal(skipped, false, "超出去重窗口后不应继续拦截")
 end
 
+-- 去重条目在命中后应被消费，允许同物品再次拾取正常显示
+do
+    local shown = {}
+    local now = 200
+
+    util.MarkRecentlyShown(shown, "|cff1eff00|Hcurrency:2815:0|h[共鸣水晶]|h|r", now)
+
+    local skipped = util.WasRecentlyShown(shown, "|cff1eff00|Hcurrency:2815:0|h[共鸣水晶]|h|r", now + 0.1, 5)
+    assert_truthy(skipped, "首次检查应命中去重并跳过")
+
+    -- 条目已被消费，同一物品再次拾取不应被拦截
+    skipped = util.WasRecentlyShown(shown, "|cff1eff00|Hcurrency:2815:0|h[共鸣水晶]|h|r", now + 0.2, 5)
+    assert_equal(skipped, false, "去重条目消费后，同物品再次拾取不应被拦截")
+end
+
 print("lootg_utils_spec: ok")
