@@ -9,24 +9,22 @@ function Util.GetIDFromLink(link)
     return string.match(link, "item:(%d+)") or string.match(link, "currency:(%d+)")
 end
 
-function Util.MarkRecentlyShown(recentlyShown, link, now)
+function Util.MarkRecentlyShown(recentlyShown, link, now, source)
     local dedupKey = Util.GetIDFromLink(link)
     if dedupKey then
-        recentlyShown[dedupKey] = now
+        recentlyShown[dedupKey] = { time = now, source = source }
     end
     return dedupKey
 end
 
-function Util.WasRecentlyShown(recentlyShown, link, now, windowSeconds)
+function Util.WasRecentlyShown(recentlyShown, link, now, windowSeconds, source)
     local dedupKey = Util.GetIDFromLink(link)
     if not dedupKey then
         return false, nil
     end
 
-    local shownAt = recentlyShown[dedupKey]
-    if shownAt and (now - shownAt) < (windowSeconds or 5) then
-        -- Consume the entry so a subsequent loot of the same item is not blocked
-        recentlyShown[dedupKey] = nil
+    local entry = recentlyShown[dedupKey]
+    if entry and (now - entry.time) < (windowSeconds or 5) and entry.source ~= source then
         return true, dedupKey
     end
 

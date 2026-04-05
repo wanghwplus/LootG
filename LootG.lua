@@ -89,12 +89,13 @@ local animContainer = CreateFrame("Frame", nil, UIParent)
 animContainer:Hide()
 
 -- 统一去重操作，保证 toast/chat/loot 共享同一套规则
-local function RememberShown(link)
-    return Util.MarkRecentlyShown(recentlyShown, link, GetTime())
+-- source 参数标识事件来源，相同来源的多次触发视为不同拾取，不互相去重
+local function RememberShown(link, source)
+    return Util.MarkRecentlyShown(recentlyShown, link, GetTime(), source)
 end
 
-local function WasShownRecently(link)
-    return Util.WasRecentlyShown(recentlyShown, link, GetTime(), RECENTLY_SHOWN_WINDOW)
+local function WasShownRecently(link, source)
+    return Util.WasRecentlyShown(recentlyShown, link, GetTime(), RECENTLY_SHOWN_WINDOW, source)
 end
 
 -- Anchor Frame for positioning
@@ -774,10 +775,10 @@ f:SetScript("OnEvent", function(self, event, ...)
         if not cached or not cached.link then return end
 
         -- 去重：跳过已由 CHAT_MSG_CURRENCY 或 CHAT_MSG_LOOT 显示的物品
-        if not WasShownRecently(cached.link) then
+        if not WasShownRecently(cached.link, "LOOT_SLOT_CLEARED") then
             local isCurrency = (cached.slotType == Enum.LootSlotType.Currency)
             ShowItemLoot(cached.link, cached.quantity, cached.texture, cached.quality, isCurrency)
-            RememberShown(cached.link)
+            RememberShown(cached.link, "LOOT_SLOT_CLEARED")
         end
         lootCache[slot] = nil
     elseif event == "LOOT_CLOSED" then
@@ -787,7 +788,7 @@ f:SetScript("OnEvent", function(self, event, ...)
         -- 清理过期的去重记录
         local now = GetTime()
         for k, v in pairs(recentlyShown) do
-            if now - v > RECENTLY_SHOWN_WINDOW then
+            if now - v.time > RECENTLY_SHOWN_WINDOW then
                 recentlyShown[k] = nil
             end
         end
@@ -859,11 +860,11 @@ f:SetScript("OnEvent", function(self, event, ...)
         if not link then return end
         quantity = tonumber(quantity) or 1
         -- 去重：跳过已由 LOOT_SLOT_CLEARED 或 SHOW_LOOT_TOAST 显示的物品
-        local wasShownRecently = WasShownRecently(link)
+        local wasShownRecently = WasShownRecently(link, "CHAT_MSG_LOOT")
         if wasShownRecently then return end
         local _, _, quality, _, _, _, _, _, _, texture = GetItemInfo(link)
         ShowItemLoot(link, quantity, texture, quality, false)
-        RememberShown(link)
+        RememberShown(link, "CHAT_MSG_LOOT")
     elseif event == "CHAT_MSG_CURRENCY" then
         if not LootGDB or not LootGDB.enabled then return end
         local rawMsg = ...
@@ -874,7 +875,7 @@ f:SetScript("OnEvent", function(self, event, ...)
         if not link then return end
         quantity = tonumber(quantity) or 1
         -- 去重：跳过已由 LOOT_SLOT_CLEARED 显示的通货
-        local wasShownRecently = WasShownRecently(link)
+        local wasShownRecently = WasShownRecently(link, "CHAT_MSG_CURRENCY")
         if wasShownRecently then return end
         local texture, quality
         local currencyInfo = C_CurrencyInfo.GetCurrencyInfoFromLink(link)
@@ -883,7 +884,7 @@ f:SetScript("OnEvent", function(self, event, ...)
             quality = currencyInfo.quality
         end
         ShowItemLoot(link, quantity, texture, quality, true)
-        RememberShown(link)
+        RememberShown(link, "CHAT_MSG_CURRENCY")
     elseif event == "CHAT_MSG_MONEY" then
         if not LootGDB or not LootGDB.enabled then return end
         local rawMsg = ...
@@ -908,7 +909,7 @@ f:SetScript("OnEvent", function(self, event, ...)
         if not link or link == "" then return end
         if typeIdentifier == "money" then return end
         -- 去重：跳过已由 LOOT_SLOT_CLEARED 显示的物品
-        local wasShownRecently = WasShownRecently(link)
+        local wasShownRecently = WasShownRecently(link, "SHOW_LOOT_TOAST")
         if wasShownRecently then return end
         quantity = tonumber(quantity) or 1
         local isCurrency = (typeIdentifier == "currency")
@@ -925,7 +926,7 @@ f:SetScript("OnEvent", function(self, event, ...)
             quality = q
         end
         ShowItemLoot(link, quantity, texture, quality, isCurrency)
-        RememberShown(link)
+        RememberShown(link, "SHOW_LOOT_TOAST")
     elseif event == "CHAT_MSG_COMBAT_FACTION_CHANGE" then
         if not LootGDB or not LootGDB.enabled then return end
         local rawMsg = ...
