@@ -2,199 +2,188 @@ local addonName, L = ...
 
 -- Default (English)
 local Locales = {
-    ["Enabled"] = "Enabled",
-    ["Enable Addon"] = "Enable or disable the scrolling loot messages.",
-    ["Display Time"] = "Display Duration (s)",
-    ["Scroll Direction"] = "Scroll Direction",
-    ["Scroll Time"] = "Movement Duration (s)",
-    ["Fade Speed"] = "Fade Out Speed (s)",
-    ["Font Path"] = "Font File Path",
-    ["Font Size"] = "Font Size",
-    ["Up"] = "Up",
-    ["Down"] = "Down",
-    ["Left"] = "Left",
-    ["Right"] = "Right",
-    ["Settings"] = "LootG Settings",
-    ["LootG_Desc"] = "Configuration for LootG scrolling loot messages.",
-    ["LootG"] = "LootG",
-    ["Locked"] = "Lock Position",
-    ["Unlock_Desc"] = "Unlock to drag the anchor point to change message position.",
-    ["X Offset"] = "X Coordinate",
-    ["Y Offset"] = "Y Coordinate",
-    ["Font"] = "Font",
-    ["Fonts\\FRIZQT__.TTF"] = "Standard (Friz Quadrata)",
-    ["Fonts\\ARIALN.TTF"] = "Chat (Arial Narrow)",
-    ["Fonts\\skurri.ttf"] = "Damage (Skurri)",
-    ["Fonts\\MORPHEUS.TTF"] = "Quest (Morpheus)",
-    ["Show Icon"] = "Show Icon",
-    ["Font Shadow"] = "Font Shadow",
-    ["Shadow Offset X"] = "Shadow Offset X",
-    ["Shadow Offset Y"] = "Shadow Offset Y",
-    ["Shadow Color"] = "Shadow Color",
-    ["Shadow Opacity"] = "Shadow Opacity",
-    ["Show Party Loot"] = "Show Party/Raid Loot",
-    ["Show Player Name"] = "Show Player Name",
-    ["Font Outline"] = "Font Outline",
-    ["None"] = "None",
-    ["OUTLINE"] = "Thin Outline",
-    ["THICKOUTLINE"] = "Thick Outline",
-    ["MONOCHROME"] = "Monochrome",
-    ["Loot"] = "Loot",
-    -- Subcategory names
-    ["Loot Notification"] = "Loot Notification",
-    ["Combat State"] = "Combat State",
-    -- Plugin intro
-    ["LootG_Intro"] = "LootG is a lightweight loot notification and combat state display addon.\n\n- Scrolling loot messages in the center of the screen\n- Combat enter/leave flash text\n- Fully customizable fonts, positions, and animations\n\nType /lootg to open settings, /lootg test to test loot display.",
-    -- Combat State locales
+    -- Runtime strings (kept — read by LootG.lua at combat state flash time)
     ["ENTER_COMBAT"] = "Enter Combat",
     ["LEAVE_COMBAT"] = "Leave Combat",
-    ["CS Display Mode"] = "Display Mode",
-    ["Scroll"] = "Scroll",
-    ["Static"] = "Static",
-    ["CS Display Time"] = "Flash Duration (s)",
-    ["CS Fade Time"] = "Fade Time (s)",
-    ["CS Scroll Speed"] = "Scroll Speed",
-    ["CS Scroll Distance"] = "Scroll Distance",
-    ["CS Font Size"] = "Font Size",
-    ["CS Enter Text"] = "Enter Combat Text",
-    ["CS Leave Text"] = "Leave Combat Text",
-    -- Slider labels
-    ["displayTime"] = "Display Time",
-    ["scrollTime"] = "Scroll Time",
-    ["fadeSpeed"] = "Fade Speed",
-    ["fontSize"] = "Font Size",
-    ["fadeTime"] = "Fade Time",
-    ["scrollSpeed"] = "Scroll Speed",
+    ["Loot"]         = "Loot",
+    ["LootG"]        = "LootG",
+
+    -- Font display names shown in the LSM font dropdown fallback.
+    -- Only referenced when Fonts\ paths surface in a legacy DB before migration.
+    ["Fonts\\FRIZQT__.TTF"] = "Standard (Friz Quadrata)",
+    ["Fonts\\ARIALN.TTF"]   = "Chat (Arial Narrow)",
+    ["Fonts\\skurri.ttf"]   = "Damage (Skurri)",
+    ["Fonts\\MORPHEUS.TTF"] = "Quest (Morpheus)",
+
+    -- Plugin intro (still used by the Blizzard stub category description)
+    ["LootG_Intro"] = "LootG is a lightweight loot notification and combat state display addon.\n\n- Scrolling loot messages in the center of the screen\n- Combat enter/leave flash text\n- Fully customizable fonts, positions, and animations\n\nType /lootg to open settings, /lootg test to test loot display.",
+
+    -- Subcategory / tab labels
+    ["TAB_LOOT"]     = "Loot Notification",
+    ["TAB_COMBAT"]   = "Combat State",
+    ["TAB_PROFILES"] = "Profiles",
+
+    -- Section headings
+    ["SECTION_GENERAL"]     = "General",
+    ["SECTION_FONT"]        = "Font",
+    ["SECTION_ANIMATION"]   = "Animation",
+    ["SECTION_POSITION"]    = "Position",
+    ["SECTION_COMBAT_TEXT"] = "Combat Text",
+    ["SECTION_DISPLAY"]     = "Display",
+
+    -- Option labels
+    ["OPT_ENABLED"]           = "Enabled",
+    ["OPT_LOCKED"]            = "Lock Position",
+    ["OPT_SHOW_ICON"]         = "Show Icon",
+    ["OPT_FONT"]              = "Font",
+    ["OPT_FONT_SIZE"]         = "Font Size",
+    ["OPT_FONT_OUTLINE"]      = "Font Outline",
+    ["OPT_FONT_SHADOW"]       = "Font Shadow",
+    ["OPT_X_OFFSET"]          = "X Offset",
+    ["OPT_Y_OFFSET"]          = "Y Offset",
+    ["OPT_SCROLL_DIRECTION"]  = "Scroll Direction",
+    ["OPT_DISPLAY_TIME"]      = "Display Time (s)",
+    ["OPT_SCROLL_TIME"]       = "Scroll Time (s)",
+    ["OPT_FADE_SPEED"]        = "Fade Speed (s)",
+    ["OPT_DISPLAY_MODE"]      = "Display Mode",
+    ["OPT_SCROLL_SPEED"]      = "Scroll Speed",
+    ["OPT_FADE_TIME"]         = "Fade Time (s)",
+    ["OPT_ENTER_COMBAT_TEXT"] = "Enter Combat Text",
+    ["OPT_LEAVE_COMBAT_TEXT"] = "Leave Combat Text",
+    ["OPT_ENTER_COMBAT_HINT"] = "Leave empty to use the localized default.",
+
+    -- Direction / mode / outline enum labels
+    ["DIR_UP"]         = "Up",
+    ["DIR_DOWN"]       = "Down",
+    ["DIR_LEFT"]       = "Left",
+    ["DIR_RIGHT"]      = "Right",
+    ["MODE_SCROLL"]    = "Scroll",
+    ["MODE_STATIC"]    = "Static",
+    ["OUTLINE_NONE"]         = "None",
+    ["OUTLINE_OUTLINE"]      = "Thin Outline",
+    ["OUTLINE_THICKOUTLINE"] = "Thick Outline",
+    ["OUTLINE_MONOCHROME"]   = "Monochrome",
+
+    -- Blizzard stub category (interface-options entry)
+    ["BLIZZARD_STUB_HINT"]   = "Type /lootg to open the LootG options window.",
+    ["BLIZZARD_STUB_BUTTON"] = "Open LootG Options",
 }
 
 local gameLocale = GetLocale()
 
 if gameLocale == "zhCN" then
-    Locales["Enabled"] = "启用"
-    Locales["Enable Addon"] = "启用或禁用拾取滚动消息。"
-    Locales["Display Time"] = "显示持续时间 (秒)"
-    Locales["Scroll Direction"] = "滚动方向"
-    Locales["Scroll Time"] = "滚动时间 (秒)"
-    Locales["Fade Speed"] = "渐隐速度 (秒)"
-    Locales["Font Path"] = "字体路径"
-    Locales["Font Size"] = "字号"
-    Locales["Up"] = "向上"
-    Locales["Down"] = "向下"
-    Locales["Left"] = "向左"
-    Locales["Right"] = "向右"
-    Locales["Settings"] = "LootG 设置"
-    Locales["LootG_Desc"] = "LootG 拾取物品滚动显示设置。"
-    Locales["Locked"] = "锁定位置"
-    Locales["Unlock_Desc"] = "取消锁定以拖动锚点改变显示位置。"
-    Locales["X Offset"] = "X 坐标"
-    Locales["Y Offset"] = "Y 坐标"
-    Locales["Font"] = "字体"
-    Locales["Fonts\\FRIZQT__.TTF"] = "标准 (Friz Quadrata)"
-    Locales["Fonts\\ARIALN.TTF"] = "聊天 (Arial Narrow)"
-    Locales["Fonts\\skurri.ttf"] = "伤害 (Skurri)"
-    Locales["Fonts\\MORPHEUS.TTF"] = "任务 (Morpheus)"
-    Locales["Show Icon"] = "显示图标"
-    Locales["Font Shadow"] = "字体阴影"
-    Locales["Shadow Offset X"] = "阴影偏移 X"
-    Locales["Shadow Offset Y"] = "阴影偏移 Y"
-    Locales["Shadow Color"] = "阴影颜色"
-    Locales["Shadow Opacity"] = "阴影透明度"
-    Locales["Show Party Loot"] = "显示队伍/团队拾取"
-    Locales["Show Player Name"] = "显示玩家名字"
-    Locales["Font Outline"] = "字体描边"
-    Locales["None"] = "无"
-    Locales["OUTLINE"] = "细描边"
-    Locales["THICKOUTLINE"] = "粗描边"
-    Locales["MONOCHROME"] = "单色"
-    Locales["Loot"] = "拾取"
-    -- Subcategory names
-    Locales["Loot Notification"] = "拾取通知"
-    Locales["Combat State"] = "战斗状态"
-    -- Plugin intro
-    Locales["LootG_Intro"] = "LootG 是一个轻量级的拾取通知和战斗状态显示插件。\n\n- 屏幕中央滚动显示拾取物品\n- 进入/脱离战斗闪烁文字提示\n- 完全自定义字体、位置和动画效果\n\n输入 /lootg 打开设置，/lootg test 测试拾取显示。"
-    -- Combat State locales
     Locales["ENTER_COMBAT"] = "进入战斗"
     Locales["LEAVE_COMBAT"] = "脱离战斗"
-    Locales["CS Display Mode"] = "显示模式"
-    Locales["Scroll"] = "滚动"
-    Locales["Static"] = "静态"
-    Locales["CS Display Time"] = "闪烁时长 (秒)"
-    Locales["CS Fade Time"] = "渐隐时间 (秒)"
-    Locales["CS Scroll Speed"] = "滚动速度"
-    Locales["CS Scroll Distance"] = "滚动距离"
-    Locales["CS Font Size"] = "字号"
-    Locales["CS Enter Text"] = "进入战斗文字"
-    Locales["CS Leave Text"] = "脱离战斗文字"
-    -- Slider labels
-    Locales["displayTime"] = "显示时间"
-    Locales["scrollTime"] = "滚动时间"
-    Locales["fadeSpeed"] = "渐隐速度"
-    Locales["fontSize"] = "字号"
-    Locales["fadeTime"] = "渐隐时间"
-    Locales["scrollSpeed"] = "滚动速度"
+    Locales["Loot"]         = "拾取"
+
+    Locales["Fonts\\FRIZQT__.TTF"] = "标准 (Friz Quadrata)"
+    Locales["Fonts\\ARIALN.TTF"]   = "聊天 (Arial Narrow)"
+    Locales["Fonts\\skurri.ttf"]   = "伤害 (Skurri)"
+    Locales["Fonts\\MORPHEUS.TTF"] = "任务 (Morpheus)"
+
+    Locales["LootG_Intro"] = "LootG 是一个轻量级的拾取通知和战斗状态显示插件。\n\n- 屏幕中央滚动显示拾取物品\n- 进入/脱离战斗闪烁文字提示\n- 完全自定义字体、位置和动画效果\n\n输入 /lootg 打开设置，/lootg test 测试拾取显示。"
+
+    Locales["TAB_LOOT"]     = "拾取通知"
+    Locales["TAB_COMBAT"]   = "战斗状态"
+    Locales["TAB_PROFILES"] = "配置文件"
+
+    Locales["SECTION_GENERAL"]     = "通用"
+    Locales["SECTION_FONT"]        = "字体"
+    Locales["SECTION_ANIMATION"]   = "动画"
+    Locales["SECTION_POSITION"]    = "位置"
+    Locales["SECTION_COMBAT_TEXT"] = "战斗文本"
+    Locales["SECTION_DISPLAY"]     = "显示"
+
+    Locales["OPT_ENABLED"]           = "启用"
+    Locales["OPT_LOCKED"]            = "锁定位置"
+    Locales["OPT_SHOW_ICON"]         = "显示图标"
+    Locales["OPT_FONT"]              = "字体"
+    Locales["OPT_FONT_SIZE"]         = "字号"
+    Locales["OPT_FONT_OUTLINE"]      = "字体描边"
+    Locales["OPT_FONT_SHADOW"]       = "字体阴影"
+    Locales["OPT_X_OFFSET"]          = "X 偏移"
+    Locales["OPT_Y_OFFSET"]          = "Y 偏移"
+    Locales["OPT_SCROLL_DIRECTION"]  = "滚动方向"
+    Locales["OPT_DISPLAY_TIME"]      = "显示时长 (秒)"
+    Locales["OPT_SCROLL_TIME"]       = "滚动时长 (秒)"
+    Locales["OPT_FADE_SPEED"]        = "渐隐速度 (秒)"
+    Locales["OPT_DISPLAY_MODE"]      = "显示模式"
+    Locales["OPT_SCROLL_SPEED"]      = "滚动速度"
+    Locales["OPT_FADE_TIME"]         = "渐隐时间 (秒)"
+    Locales["OPT_ENTER_COMBAT_TEXT"] = "进入战斗文本"
+    Locales["OPT_LEAVE_COMBAT_TEXT"] = "脱离战斗文本"
+    Locales["OPT_ENTER_COMBAT_HINT"] = "留空以使用本地化默认值。"
+
+    Locales["DIR_UP"]    = "向上"
+    Locales["DIR_DOWN"]  = "向下"
+    Locales["DIR_LEFT"]  = "向左"
+    Locales["DIR_RIGHT"] = "向右"
+    Locales["MODE_SCROLL"] = "滚动"
+    Locales["MODE_STATIC"] = "静态"
+    Locales["OUTLINE_NONE"]         = "无"
+    Locales["OUTLINE_OUTLINE"]      = "细描边"
+    Locales["OUTLINE_THICKOUTLINE"] = "粗描边"
+    Locales["OUTLINE_MONOCHROME"]   = "单色"
+
+    Locales["BLIZZARD_STUB_HINT"]   = "输入 /lootg 打开 LootG 设置窗口。"
+    Locales["BLIZZARD_STUB_BUTTON"] = "打开 LootG 设置"
+
 elseif gameLocale == "zhTW" then
-    Locales["Enabled"] = "啟用"
-    Locales["Enable Addon"] = "啟用或禁用拾取滾動消息。"
-    Locales["Display Time"] = "顯示持續時間 (秒)"
-    Locales["Scroll Direction"] = "滾動方向"
-    Locales["Scroll Time"] = "滾動時間 (秒)"
-    Locales["Fade Speed"] = "漸隱速度 (秒)"
-    Locales["Font Path"] = "字體路徑"
-    Locales["Font Size"] = "字號"
-    Locales["Up"] = "向上"
-    Locales["Down"] = "向下"
-    Locales["Left"] = "向左"
-    Locales["Right"] = "向右"
-    Locales["Settings"] = "LootG 設置"
-    Locales["LootG_Desc"] = "LootG 拾取物品滾動顯示設置。"
-    Locales["Locked"] = "鎖定位置"
-    Locales["Unlock_Desc"] = "取消鎖定以拖動錨點改變顯示位置。"
-    Locales["X Offset"] = "X 座標"
-    Locales["Y Offset"] = "Y 座標"
-    Locales["Font"] = "字體"
-    Locales["Fonts\\FRIZQT__.TTF"] = "標準 (Friz Quadrata)"
-    Locales["Fonts\\ARIALN.TTF"] = "聊天 (Arial Narrow)"
-    Locales["Fonts\\skurri.ttf"] = "傷害 (Skurri)"
-    Locales["Fonts\\MORPHEUS.TTF"] = "任務 (Morpheus)"
-    Locales["Show Icon"] = "顯示圖標"
-    Locales["Font Shadow"] = "字體陰影"
-    Locales["Shadow Offset X"] = "陰影偏移 X"
-    Locales["Shadow Offset Y"] = "陰影偏移 Y"
-    Locales["Shadow Color"] = "陰影顏色"
-    Locales["Shadow Opacity"] = "陰影透明度"
-    Locales["Show Party Loot"] = "顯示隊伍/團隊拾取"
-    Locales["Show Player Name"] = "顯示玩家名字"
-    Locales["Font Outline"] = "字體描邊"
-    Locales["None"] = "無"
-    Locales["OUTLINE"] = "細描邊"
-    Locales["THICKOUTLINE"] = "粗描邊"
-    Locales["MONOCHROME"] = "單色"
-    Locales["Loot"] = "拾取"
-    -- Subcategory names
-    Locales["Loot Notification"] = "拾取通知"
-    Locales["Combat State"] = "戰鬥狀態"
-    -- Plugin intro
-    Locales["LootG_Intro"] = "LootG 是一個輕量級的拾取通知和戰鬥狀態顯示插件。\n\n- 螢幕中央滾動顯示拾取物品\n- 進入/脫離戰鬥閃爍文字提示\n- 完全自定義字體、位置和動畫效果\n\n輸入 /lootg 打開設置，/lootg test 測試拾取顯示。"
-    -- Combat State locales
     Locales["ENTER_COMBAT"] = "進入戰鬥"
     Locales["LEAVE_COMBAT"] = "脫離戰鬥"
-    Locales["CS Display Mode"] = "顯示模式"
-    Locales["Scroll"] = "滾動"
-    Locales["Static"] = "靜態"
-    Locales["CS Display Time"] = "閃爍時長 (秒)"
-    Locales["CS Fade Time"] = "漸隱時間 (秒)"
-    Locales["CS Scroll Speed"] = "滾動速度"
-    Locales["CS Scroll Distance"] = "滾動距離"
-    Locales["CS Font Size"] = "字號"
-    Locales["CS Enter Text"] = "進入戰鬥文字"
-    Locales["CS Leave Text"] = "脫離戰鬥文字"
-    -- Slider labels
-    Locales["displayTime"] = "顯示時間"
-    Locales["scrollTime"] = "滾動時間"
-    Locales["fadeSpeed"] = "漸隱速度"
-    Locales["fontSize"] = "字號"
-    Locales["fadeTime"] = "漸隱時間"
-    Locales["scrollSpeed"] = "滾動速度"
+    Locales["Loot"]         = "拾取"
+
+    Locales["Fonts\\FRIZQT__.TTF"] = "標準 (Friz Quadrata)"
+    Locales["Fonts\\ARIALN.TTF"]   = "聊天 (Arial Narrow)"
+    Locales["Fonts\\skurri.ttf"]   = "傷害 (Skurri)"
+    Locales["Fonts\\MORPHEUS.TTF"] = "任務 (Morpheus)"
+
+    Locales["LootG_Intro"] = "LootG 是一個輕量級的拾取通知和戰鬥狀態顯示插件。\n\n- 螢幕中央滾動顯示拾取物品\n- 進入/脫離戰鬥閃爍文字提示\n- 完全自定義字體、位置和動畫效果\n\n輸入 /lootg 打開設置，/lootg test 測試拾取顯示。"
+
+    Locales["TAB_LOOT"]     = "拾取通知"
+    Locales["TAB_COMBAT"]   = "戰鬥狀態"
+    Locales["TAB_PROFILES"] = "設定檔"
+
+    Locales["SECTION_GENERAL"]     = "通用"
+    Locales["SECTION_FONT"]        = "字體"
+    Locales["SECTION_ANIMATION"]   = "動畫"
+    Locales["SECTION_POSITION"]    = "位置"
+    Locales["SECTION_COMBAT_TEXT"] = "戰鬥文字"
+    Locales["SECTION_DISPLAY"]     = "顯示"
+
+    Locales["OPT_ENABLED"]           = "啟用"
+    Locales["OPT_LOCKED"]            = "鎖定位置"
+    Locales["OPT_SHOW_ICON"]         = "顯示圖示"
+    Locales["OPT_FONT"]              = "字體"
+    Locales["OPT_FONT_SIZE"]         = "字號"
+    Locales["OPT_FONT_OUTLINE"]      = "字體描邊"
+    Locales["OPT_FONT_SHADOW"]       = "字體陰影"
+    Locales["OPT_X_OFFSET"]          = "X 偏移"
+    Locales["OPT_Y_OFFSET"]          = "Y 偏移"
+    Locales["OPT_SCROLL_DIRECTION"]  = "滾動方向"
+    Locales["OPT_DISPLAY_TIME"]      = "顯示時長 (秒)"
+    Locales["OPT_SCROLL_TIME"]       = "滾動時長 (秒)"
+    Locales["OPT_FADE_SPEED"]        = "漸隱速度 (秒)"
+    Locales["OPT_DISPLAY_MODE"]      = "顯示模式"
+    Locales["OPT_SCROLL_SPEED"]      = "滾動速度"
+    Locales["OPT_FADE_TIME"]         = "漸隱時間 (秒)"
+    Locales["OPT_ENTER_COMBAT_TEXT"] = "進入戰鬥文字"
+    Locales["OPT_LEAVE_COMBAT_TEXT"] = "脫離戰鬥文字"
+    Locales["OPT_ENTER_COMBAT_HINT"] = "留空以使用本地化預設值。"
+
+    Locales["DIR_UP"]    = "向上"
+    Locales["DIR_DOWN"]  = "向下"
+    Locales["DIR_LEFT"]  = "向左"
+    Locales["DIR_RIGHT"] = "向右"
+    Locales["MODE_SCROLL"] = "滾動"
+    Locales["MODE_STATIC"] = "靜態"
+    Locales["OUTLINE_NONE"]         = "無"
+    Locales["OUTLINE_OUTLINE"]      = "細描邊"
+    Locales["OUTLINE_THICKOUTLINE"] = "粗描邊"
+    Locales["OUTLINE_MONOCHROME"]   = "單色"
+
+    Locales["BLIZZARD_STUB_HINT"]   = "輸入 /lootg 打開 LootG 設定視窗。"
+    Locales["BLIZZARD_STUB_BUTTON"] = "打開 LootG 設定"
 end
 
 for k, v in pairs(Locales) do
