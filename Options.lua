@@ -251,7 +251,8 @@ end
 -- ==========================================================================
 -- Tab content dispatcher
 -- ==========================================================================
-local function BuildTabContent(container, group)
+-- AceGUI 回调签名为 (widget, 事件名, 值)，tab 值在第 3 个参数
+local function BuildTabContent(container, _, group)
     container:ReleaseChildren()
     local scroll = AceGUI:Create("ScrollFrame")
     scroll:SetLayout("Flow")
