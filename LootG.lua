@@ -26,6 +26,7 @@ f:RegisterEvent("CHAT_MSG_CURRENCY")
 f:RegisterEvent("CHAT_MSG_MONEY")
 f:RegisterEvent("PLAYER_REGEN_DISABLED")
 f:RegisterEvent("PLAYER_REGEN_ENABLED")
+f:RegisterEvent("PLAYER_LOGIN")
 
 local activeMessages = {}
 local messagePool = {}
@@ -111,13 +112,7 @@ anchor:SetScript("OnDragStop", function(self)
     LootCfg().anchorX = xOfs
     LootCfg().anchorY = yOfs
 
-    -- Sync with Settings Panel if open
-    if LootG.SettingsControls and LootG.SettingsControls.AnchorX then
-        LootG.SettingsControls.AnchorX:SetValue(xOfs)
-    end
-    if LootG.SettingsControls and LootG.SettingsControls.AnchorY then
-        LootG.SettingsControls.AnchorY:SetValue(yOfs)
-    end
+    if LootG.RefreshOptionsUI then LootG:RefreshOptionsUI() end
 
     LootG:ResetAnchor() -- Re-anchor strictly to CENTER
 end)
@@ -491,13 +486,7 @@ csAnchor:SetScript("OnDragStop", function(self)
     CSCfg().posX = xOfs
     CSCfg().posY = yOfs
 
-    -- Sync with Settings Panel if open
-    if LootG.CSSettingsControls and LootG.CSSettingsControls.PosX then
-        LootG.CSSettingsControls.PosX:SetValue(xOfs)
-    end
-    if LootG.CSSettingsControls and LootG.CSSettingsControls.PosY then
-        LootG.CSSettingsControls.PosY:SetValue(yOfs)
-    end
+    if LootG.RefreshOptionsUI then LootG:RefreshOptionsUI() end
 
     LootG:ResetCSAnchor()
 end)
@@ -722,6 +711,9 @@ f:SetScript("OnEvent", function(self, event, ...)
             previousMoney = GetMoney()
             self:UnregisterEvent("ADDON_LOADED")
         end
+    elseif event == "PLAYER_LOGIN" then
+        LootG:RegisterBlizzardStub()
+        self:UnregisterEvent("PLAYER_LOGIN")
     elseif event == "LOOT_READY" then
         isLooting = true
         lootMoneyCopper = 0
@@ -927,6 +919,52 @@ f:SetScript("OnEvent", function(self, event, ...)
     end
 end)
 
+function LootG:RegisterBlizzardStub()
+    if self._blizzardStubReady then return end
+    self._blizzardStubReady = true
+
+    local panel = CreateFrame("Frame")
+    panel.name = L["LootG"] or "LootG"
+
+    local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    title:SetPoint("TOPLEFT", 16, -16)
+    title:SetText(L["LootG"] or "LootG")
+
+    local version = ""
+    if C_AddOns and C_AddOns.GetAddOnMetadata then
+        version = C_AddOns.GetAddOnMetadata(addonName, "Version") or ""
+    elseif GetAddOnMetadata then
+        version = GetAddOnMetadata(addonName, "Version") or ""
+    end
+
+    local ver = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    ver:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
+    ver:SetText(version ~= "" and ("v" .. version) or "")
+
+    local hint = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    hint:SetPoint("TOPLEFT", ver, "BOTTOMLEFT", 0, -12)
+    hint:SetText(L["BLIZZARD_STUB_HINT"] or "Type /lootg to open the LootG options window.")
+
+    local btn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    btn:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -14)
+    btn:SetSize(200, 24)
+    btn:SetText(L["BLIZZARD_STUB_BUTTON"] or "Open LootG Options")
+    btn:SetScript("OnClick", function()
+        HideUIPanel(SettingsPanel or InterfaceOptionsFrame)
+        HideUIPanel(GameMenuFrame)
+        LootG:OpenOptions()
+    end)
+
+    if _G.Settings and _G.Settings.RegisterCanvasLayoutCategory then
+        local category = Settings.RegisterCanvasLayoutCategory(panel, L["LootG"] or "LootG")
+        category.ID = L["LootG"] or "LootG"
+        Settings.RegisterAddOnCategory(category)
+        LootG.SettingsCategory = category
+    elseif _G.InterfaceOptions_AddCategory then
+        InterfaceOptions_AddCategory(panel)
+    end
+end
+
 -- ======= Slash Command =======
 
 SLASH_LOOTG1 = "/lootg"
@@ -948,10 +986,7 @@ SlashCmdList["LOOTG"] = function(msg)
         local testIcon = 134400 -- A generic icon
         CreateScrollingMessage(testItem, testIcon)
     else
-        -- Open settings
-        if LootG.SettingsCategory then
-            Settings.OpenToCategory(LootG.SettingsCategory:GetID())
-        end
+        LootG:OpenOptions()
     end
 end
 
@@ -963,8 +998,6 @@ function LootG_OnCompartmentClick(addonName, button)
         local testIcon = 134400
         CreateScrollingMessage(testItem, testIcon)
     else
-        if LootG.SettingsCategory then
-            Settings.OpenToCategory(LootG.SettingsCategory:GetID())
-        end
+        LootG:OpenOptions()
     end
 end
