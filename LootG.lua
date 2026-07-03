@@ -470,7 +470,7 @@ csAnchor:SetBackdrop({
 csAnchor:SetBackdropColor(1, 0.3, 0.3, 0.5)
 csAnchor.text = csAnchor:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 csAnchor.text:SetPoint("CENTER")
-csAnchor.text:SetText(L["Combat State"] or "Combat State")
+csAnchor.text:SetText(L["Combat State"])
 
 csAnchor:SetScript("OnDragStart", csAnchor.StartMoving)
 csAnchor:SetScript("OnDragStop", function(self)
@@ -508,7 +508,7 @@ csLockPopup:SetFrameStrata("DIALOG")
 local csLockBtn = CreateFrame("Button", nil, csLockPopup, "UIPanelButtonTemplate")
 csLockBtn:SetSize(100, 26)
 csLockBtn:SetPoint("CENTER")
-csLockBtn:SetText(L["Locked"] or "Lock Position")
+csLockBtn:SetText(L["Locked"])
 csLockBtn:SetScript("OnClick", function()
     CSCfg().locked = true
     LootG:UpdateCSAnchorVisibility()
@@ -957,7 +957,6 @@ function LootG:RegisterBlizzardStub()
 
     if _G.Settings and _G.Settings.RegisterCanvasLayoutCategory then
         local category = Settings.RegisterCanvasLayoutCategory(panel, L["LootG"] or "LootG")
-        category.ID = L["LootG"] or "LootG"
         Settings.RegisterAddOnCategory(category)
         LootG.SettingsCategory = category
     elseif _G.InterfaceOptions_AddCategory then

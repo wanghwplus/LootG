@@ -285,7 +285,7 @@ function LootG:OpenOptions()
     end
 
     local f = AceGUI:Create("Frame")
-    f:SetTitle("LootG")
+    f:SetTitle(L["LootG"] or "LootG")
     f:SetStatusText(version ~= "" and ("v" .. version) or "")
     f:SetLayout("Fill")
     f:SetWidth(720)

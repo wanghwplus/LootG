@@ -7,6 +7,8 @@ local Locales = {
     ["LEAVE_COMBAT"] = "Leave Combat",
     ["Loot"]         = "Loot",
     ["LootG"]        = "LootG",
+    ["Locked"]       = "Lock Position",
+    ["Combat State"] = "Combat State",
 
     -- Font display names shown in the LSM font dropdown fallback.
     -- Only referenced when Fonts\ paths surface in a legacy DB before migration.
@@ -75,6 +77,8 @@ if gameLocale == "zhCN" then
     Locales["ENTER_COMBAT"] = "进入战斗"
     Locales["LEAVE_COMBAT"] = "脱离战斗"
     Locales["Loot"]         = "拾取"
+    Locales["Locked"]       = "锁定位置"
+    Locales["Combat State"] = "战斗状态"
 
     Locales["Fonts\\FRIZQT__.TTF"] = "标准 (Friz Quadrata)"
     Locales["Fonts\\ARIALN.TTF"]   = "聊天 (Arial Narrow)"
@@ -132,6 +136,8 @@ elseif gameLocale == "zhTW" then
     Locales["ENTER_COMBAT"] = "進入戰鬥"
     Locales["LEAVE_COMBAT"] = "脫離戰鬥"
     Locales["Loot"]         = "拾取"
+    Locales["Locked"]       = "鎖定位置"
+    Locales["Combat State"] = "戰鬥狀態"
 
     Locales["Fonts\\FRIZQT__.TTF"] = "標準 (Friz Quadrata)"
     Locales["Fonts\\ARIALN.TTF"]   = "聊天 (Arial Narrow)"
