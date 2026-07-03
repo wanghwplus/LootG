@@ -189,13 +189,14 @@ local function AnimUpdate(self, elapsed)
     for _, frame in ipairs(activeMessages) do
         if not frame.expired then
             local currTime = now - frame.startTime
-            local speed = 100 / frame.duration
+            -- 与 combatState 相同的速度语义：100 px/s 乘以倍率
+            local speed = 100 * frame.scrollSpeed
             local animationOffset = speed * currTime
             frame.currentY = (animationOffset * frame.direction) + frame.baseOffset
 
             -- 渐隐处理
             if currTime > frame.displayTime then
-                local fadeProgress = (currTime - frame.displayTime) / frame.fadeSpeed
+                local fadeProgress = (currTime - frame.displayTime) / frame.fadeTime
                 if fadeProgress >= 1 then
                     RecycleMessageFrame(frame)
                 else
@@ -313,9 +314,9 @@ local function CreateScrollingMessage(text, icon)
 
     -- Animation Data
     frame.startTime = GetTime()
-    frame.duration = cfg.scrollTime
+    frame.scrollSpeed = cfg.scrollSpeed or 0.7
     frame.displayTime = cfg.displayTime
-    frame.fadeSpeed = cfg.fadeSpeed
+    frame.fadeTime = cfg.fadeTime or 0.1
     frame.direction = cfg.scrollDirection == "UP" and 1 or -1
     frame.baseOffset = 0
     frame.expired = false
@@ -506,7 +507,7 @@ end
 local function OnUpdate_Scroll(self, elapsed)
     if not csMode then return end
 
-    local displayTime = GetCSSetting("displayTime", 0.6)
+    local displayTime = GetCSSetting("displayTime", 1)
     local fadeTime = GetCSSetting("fadeTime", 0.1)
     local scrollSpeed = GetCSSetting("scrollSpeed", 1.5)
     local direction = GetCSSetting("scrollDirection", "UP")
@@ -552,7 +553,7 @@ end
 local function OnUpdate_Static(self, elapsed)
     if not csMode then return end
 
-    local displayTime = GetCSSetting("displayTime", 0.6)
+    local displayTime = GetCSSetting("displayTime", 1)
     local fadeTime = GetCSSetting("fadeTime", 0.1)
 
     csTimer = csTimer + elapsed

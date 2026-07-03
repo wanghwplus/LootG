@@ -17,12 +17,12 @@ LootG.Defaults = {
             locked          = true,
             showIcon        = true,
             anchorX         = 0,
-            anchorY         = 0,
+            anchorY         = 250,
             scrollDirection = "UP",
-            displayTime     = 3,
-            scrollTime      = 1.5,
-            fadeSpeed       = 0.5,
-            fontSize        = 20,
+            displayTime     = 1.5,
+            scrollSpeed     = 0.7,
+            fadeTime        = 0.1,
+            fontSize        = 14,
             fontShadow      = true,
             fontOutline     = "OUTLINE",
             font            = "Friz Quadrata TT",
@@ -34,7 +34,7 @@ LootG.Defaults = {
             posY            = 250,
             displayMode     = "SCROLL",
             scrollDirection = "UP",
-            displayTime     = 0.6,
+            displayTime     = 1,
             fadeTime        = 0.1,
             scrollSpeed     = 1.5,
             fontSize        = 38,
@@ -83,6 +83,26 @@ local FLAT_LOOT_KEYS = {
     "scrollDirection", "displayTime", "scrollTime", "fadeSpeed",
     "fontSize", "fontShadow", "fontOutline",
 }
+
+-- ==========================================================================
+-- Shape migration: 旧版 loot 动画参数 → 与 combatState 统一的语义
+-- ==========================================================================
+-- 旧版 scrollTime 是"滚动 100px 所需秒数"（越大越慢），fadeSpeed 名为速度
+-- 实为秒数。统一为 scrollSpeed（100px/s 的倍率，越大越快）与 fadeTime（秒），
+-- 换算 scrollSpeed = 1/scrollTime，按滑块步长取整并夹到滑块范围内。
+-- 对已存在的 LootGAceDB profile 同样需要执行（每个 profile 切换时各跑一次）。
+function LootG._MigrateLootShape(loot)
+    if type(loot) ~= "table" then return end
+    if type(loot.scrollTime) == "number" and loot.scrollTime > 0 then
+        local speed = math.floor(1 / loot.scrollTime * 10 + 0.5) / 10
+        loot.scrollSpeed = math.min(5, math.max(0.1, speed))
+    end
+    loot.scrollTime = nil
+    if type(loot.fadeSpeed) == "number" then
+        loot.fadeTime = loot.fadeSpeed
+    end
+    loot.fadeSpeed = nil
+end
 
 function LootG._MigrateLegacyDB(db, legacy)
     if db.global._migrated then return db end
@@ -135,15 +155,21 @@ function LootG:InitializeConfig()
     -- Defaults.profile lazily on access.
     LootG.db = AceDB:New("LootGAceDB", LootG.Defaults, true)
 
-    -- 切换/复制/重置 profile 后立即把新配置应用到屏幕上的锚点框架，
-    -- 否则锚点位置和锁定状态会停留在旧 profile 的值
-    LootG.db.RegisterCallback(LootG, "OnProfileChanged", "RefreshAll")
-    LootG.db.RegisterCallback(LootG, "OnProfileCopied", "RefreshAll")
-    LootG.db.RegisterCallback(LootG, "OnProfileReset", "RefreshAll")
+    -- 切换/复制/重置 profile 后：目标 profile 可能还是旧参数形态，先做
+    -- shape 迁移，再把新配置应用到屏幕上的锚点框架
+    LootG.db.RegisterCallback(LootG, "OnProfileChanged", "HandleProfileChanged")
+    LootG.db.RegisterCallback(LootG, "OnProfileCopied", "HandleProfileChanged")
+    LootG.db.RegisterCallback(LootG, "OnProfileReset", "HandleProfileChanged")
 
     LootG._MigrateLegacyDB(LootG.db, _G.LootGDB)
+    LootG._MigrateLootShape(LootG.db.profile.loot)
     if _G.LootGDB then
         -- 置 nil 后 WoW 在登出时不再写出该 SavedVariable，等效于删除旧存档
         _G.LootGDB = nil
     end
+end
+
+function LootG:HandleProfileChanged()
+    LootG._MigrateLootShape(LootG.db.profile.loot)
+    if LootG.RefreshAll then LootG:RefreshAll() end
 end

@@ -32,7 +32,8 @@ end
 do
     local db = make_db()
     addon._MigrateLegacyDB(db, nil)
-    assert_equal(db.profile.loot.fontSize, 20, "no legacy → loot.fontSize default preserved")
+    assert_equal(db.profile.loot.fontSize, addon.Defaults.profile.loot.fontSize,
+        "no legacy → loot.fontSize default preserved")
     assert_equal(db.profile.combatState.enterCombatText, "", "no legacy → enterCombatText default empty")
     assert_equal(db.global._migrated, true, "no legacy → still marks _migrated to skip next run")
 end
@@ -56,6 +57,7 @@ do
         fontPath        = "Fonts\\ARIALN.TTF",
     }
     addon._MigrateLegacyDB(db, legacy)
+    addon._MigrateLootShape(db.profile.loot)
     assert_equal(db.profile.loot.enabled, false, "loot.enabled copied")
     assert_equal(db.profile.loot.anchorX, 42, "loot.anchorX copied")
     assert_equal(db.profile.loot.anchorY, -17, "loot.anchorY copied")
@@ -63,6 +65,23 @@ do
     assert_equal(db.profile.loot.fontSize, 30, "loot.fontSize copied")
     assert_equal(db.profile.loot.fontOutline, "THICKOUTLINE", "loot.fontOutline copied")
     assert_equal(db.profile.loot.font, "Arial Narrow", "fontPath mapped to LSM name")
+    -- 旧 scrollTime 2.5（滚 100px 用 2.5 秒）→ scrollSpeed 0.4 倍率
+    assert_equal(db.profile.loot.scrollSpeed, 0.4, "legacy scrollTime converted to scrollSpeed")
+    assert_equal(db.profile.loot.fadeTime, 1.0, "legacy fadeSpeed carried over as fadeTime")
+    assert_equal(db.profile.loot.scrollTime, nil, "legacy scrollTime key removed")
+    assert_equal(db.profile.loot.fadeSpeed, nil, "legacy fadeSpeed key removed")
+end
+
+-- Case 2b: shape migration is idempotent and clamps out-of-range speeds.
+do
+    local loot = { scrollTime = 20, fadeSpeed = 0.5 }   -- 1/20 = 0.05 → clamp to 0.1
+    addon._MigrateLootShape(loot)
+    assert_equal(loot.scrollSpeed, 0.1, "very slow legacy scrollTime clamps to slider minimum")
+    assert_equal(loot.fadeTime, 0.5, "fadeSpeed value carried over")
+
+    loot.scrollSpeed = 2.5
+    addon._MigrateLootShape(loot)   -- second run: no legacy keys left, nothing changes
+    assert_equal(loot.scrollSpeed, 2.5, "re-running shape migration must not touch new keys")
 end
 
 -- Case 3: legacy combatState with user-untouched enter/leave text → wiped to "" so
@@ -109,7 +128,8 @@ do
     local legacy = { enabled = false, fontSize = 99 }
     addon._MigrateLegacyDB(db, legacy)
     assert_equal(db.profile.loot.enabled, true, "second call skipped when _migrated is set")
-    assert_equal(db.profile.loot.fontSize, 20, "second call skipped when _migrated is set")
+    assert_equal(db.profile.loot.fontSize, addon.Defaults.profile.loot.fontSize,
+        "second call skipped when _migrated is set")
 end
 
 print("lootg_migration_spec: ok")

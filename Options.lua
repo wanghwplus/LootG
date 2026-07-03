@@ -157,19 +157,19 @@ local function DrawLootTab(container)
         function() return cfg.fontShadow end,
         function(v) cfg.fontShadow = v end)
 
-    AddSeparator(container, L["SECTION_ANIMATION"])
+    AddSeparator(container, L["SECTION_DISPLAY"])
     AddDropdown(container, L["OPT_SCROLL_DIRECTION"], DirectionValues(false), DIRECTION_ORDER_UD,
         function() return cfg.scrollDirection end,
         function(v) cfg.scrollDirection = v end)
-    AddSlider(container, L["OPT_DISPLAY_TIME"], 0.5, 10, 0.5,
+    AddSlider(container, L["OPT_DISPLAY_TIME"], 0.1, 10, 0.1,
         function() return cfg.displayTime end,
         function(v) cfg.displayTime = v end)
-    AddSlider(container, L["OPT_SCROLL_TIME"], 0.1, 5, 0.1,
-        function() return cfg.scrollTime end,
-        function(v) cfg.scrollTime = v end)
-    AddSlider(container, L["OPT_FADE_SPEED"], 0.1, 2, 0.1,
-        function() return cfg.fadeSpeed end,
-        function(v) cfg.fadeSpeed = v end)
+    AddSlider(container, L["OPT_SCROLL_SPEED"], 0.1, 5, 0.1,
+        function() return cfg.scrollSpeed end,
+        function(v) cfg.scrollSpeed = v end)
+    AddSlider(container, L["OPT_FADE_TIME"], 0.1, 3, 0.1,
+        function() return cfg.fadeTime end,
+        function(v) cfg.fadeTime = v end)
 
     AddSeparator(container, L["SECTION_POSITION"])
     AddSlider(container, L["OPT_X_OFFSET"], -800, 800, 1,
@@ -191,12 +191,22 @@ local function DrawCombatTab(container)
     AddCheckbox(container, L["OPT_LOCKED"],  function() return cfg.locked  end, function(v) cfg.locked  = v end)
 
     AddSeparator(container, L["SECTION_COMBAT_TEXT"])
+    -- 数据库里空串表示"跟随客户端语言取本地化默认值"，但输入框应显示
+    -- 生效的文本；保存时若等于默认值或为空则仍存空串，保留动态回退行为
+    local enterDefault = L["ENTER_COMBAT"] or "Enter Combat"
+    local leaveDefault = L["LEAVE_COMBAT"] or "Leave Combat"
     AddEditBox(container, L["OPT_ENTER_COMBAT_TEXT"],
-        function() return cfg.enterCombatText end,
-        function(v) cfg.enterCombatText = v end)
+        function()
+            local cur = cfg.enterCombatText
+            return (cur and cur ~= "") and cur or enterDefault
+        end,
+        function(v) cfg.enterCombatText = (v == enterDefault) and "" or v end)
     AddEditBox(container, L["OPT_LEAVE_COMBAT_TEXT"],
-        function() return cfg.leaveCombatText end,
-        function(v) cfg.leaveCombatText = v end)
+        function()
+            local cur = cfg.leaveCombatText
+            return (cur and cur ~= "") and cur or leaveDefault
+        end,
+        function(v) cfg.leaveCombatText = (v == leaveDefault) and "" or v end)
     AddHint(container, L["OPT_ENTER_COMBAT_HINT"])
 
     AddSeparator(container, L["SECTION_FONT"])
