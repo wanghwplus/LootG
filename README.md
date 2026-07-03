@@ -127,6 +127,13 @@ Leave Combat    (green flash text)
 - Fixed enter/leave combat default text sometimes freezing at whatever locale seeded the SavedVariables on first install. Defaults are now empty strings and the runtime falls back to the localized default text each call.
 - Existing LootGDB SavedVariables are auto-migrated into the new LootGAceDB shape on first launch.
 - Interface bumped to 12.0.5 / 12.0.7.
+- Rolled up the taint-error and dedup fixes shipped in 1.2.2 / 1.2.3.
+
+### v1.2.3
+- Bug fix
+
+### v1.2.2
+- Bug fix
 
 ### v1.2.1
 - Added loot, currency, and gold notifications from opened containers, and restored missing chest and quest reward messages

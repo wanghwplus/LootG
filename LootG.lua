@@ -27,6 +27,10 @@ f:RegisterEvent("CHAT_MSG_MONEY")
 f:RegisterEvent("PLAYER_REGEN_DISABLED")
 f:RegisterEvent("PLAYER_REGEN_ENABLED")
 f:RegisterEvent("PLAYER_LOGIN")
+f:RegisterEvent("PLAYER_ENTERING_WORLD")
+f:RegisterEvent("MAIL_SHOW")
+f:RegisterEvent("MERCHANT_SHOW")
+f:RegisterEvent("AUCTION_HOUSE_SHOW")
 
 local activeMessages = {}
 local messagePool = {}
@@ -36,8 +40,31 @@ local isLooting = false
 local lootMoneyCopper = 0 -- 缓存拾取窗口中的金币数额（铜币），避免与其他来源混淆
 local recentlyShown = {} -- 去重：记录已由 LOOT_SLOT_CLEARED 显示的物品
 local lastMoneyShownTime = 0 -- 去重：PLAYER_MONEY 与 CHAT_MSG_MONEY 之间
+local pendingMoneyGain = nil -- 延迟显示的 PLAYER_MONEY 金额（铜币），等待 CHAT_MSG_MONEY 覆盖
+local pendingMoneyTimer = nil -- 延迟显示的定时器
 local RECENTLY_SHOWN_WINDOW = 5
 local Util = LootG.Util
+
+-- Detaint a secret string by rebuilding it from raw bytes
+local function DetaintString(rawMsg)
+    if type(rawMsg) ~= "string" then return rawMsg end
+    -- Byte-level copy to produce a clean, untainted string
+    -- string.format("%s", ...) does NOT reliably detaint secret strings
+    local ok, result = pcall(function()
+        local bytes = {}
+        local i = 1
+        while true do
+            local b = string.byte(rawMsg, i)
+            if not b then break end
+            bytes[i] = b
+            i = i + 1
+        end
+        if #bytes == 0 then return nil end
+        return string.char(unpack(bytes))
+    end)
+    if ok and result then return result end
+    return nil
+end
 
 -- 构建本地化无关的聊天消息匹配模式
 local function BuildPattern(globalString)
@@ -71,12 +98,13 @@ local animContainer = CreateFrame("Frame", nil, UIParent)
 animContainer:Hide()
 
 -- 统一去重操作，保证 toast/chat/loot 共享同一套规则
-local function RememberShown(link)
-    return Util.MarkRecentlyShown(recentlyShown, link, GetTime())
+-- source 参数标识事件来源，相同来源的多次触发视为不同拾取，不互相去重
+local function RememberShown(link, source)
+    return Util.MarkRecentlyShown(recentlyShown, link, GetTime(), source)
 end
 
-local function WasShownRecently(link)
-    return Util.WasRecentlyShown(recentlyShown, link, GetTime(), RECENTLY_SHOWN_WINDOW)
+local function WasShownRecently(link, source)
+    return Util.WasRecentlyShown(recentlyShown, link, GetTime(), RECENTLY_SHOWN_WINDOW, source)
 end
 
 -- Anchor Frame for positioning
@@ -749,9 +777,12 @@ f:SetScript("OnEvent", function(self, event, ...)
         local cached = lootCache[slot]
         if not cached or not cached.link then return end
 
-        local isCurrency = (cached.slotType == Enum.LootSlotType.Currency)
-        ShowItemLoot(cached.link, cached.quantity, cached.texture, cached.quality, isCurrency)
-        RememberShown(cached.link)
+        -- 去重：跳过已由 CHAT_MSG_CURRENCY 或 CHAT_MSG_LOOT 显示的物品
+        if not WasShownRecently(cached.link, "LOOT_SLOT_CLEARED") then
+            local isCurrency = (cached.slotType == Enum.LootSlotType.Currency)
+            ShowItemLoot(cached.link, cached.quantity, cached.texture, cached.quality, isCurrency)
+            RememberShown(cached.link, "LOOT_SLOT_CLEARED")
+        end
         lootCache[slot] = nil
     elseif event == "LOOT_CLOSED" then
         isLooting = false
@@ -760,10 +791,14 @@ f:SetScript("OnEvent", function(self, event, ...)
         -- 清理过期的去重记录
         local now = GetTime()
         for k, v in pairs(recentlyShown) do
-            if now - v > RECENTLY_SHOWN_WINDOW then
+            if now - v.time > RECENTLY_SHOWN_WINDOW then
                 recentlyShown[k] = nil
             end
         end
+    elseif event == "PLAYER_ENTERING_WORLD" or event == "MAIL_SHOW"
+        or event == "MERCHANT_SHOW" or event == "AUCTION_HOUSE_SHOW" then
+        -- 同步 previousMoney，避免金币偏差混入后续差值计算
+        previousMoney = GetMoney()
     elseif event == "PLAYER_MONEY" then
         local cfg = LootCfg()
         if not cfg or not cfg.enabled then
@@ -777,47 +812,76 @@ f:SetScript("OnEvent", function(self, event, ...)
             if isLooting and lootMoneyCopper > 0 then
                 gained = lootMoneyCopper
                 lootMoneyCopper = 0
+                local moneyText = C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString
+                    and C_CurrencyInfo.GetCoinTextureString(gained)
+                    or GetCoinTextureString(gained)
+                CreateScrollingMessage(moneyText, nil)
+                lastMoneyShownTime = GetTime()
+            else
+                -- 非拾取场景（邮件、拍卖行等）：延迟显示，优先让 CHAT_MSG_MONEY 提供精确金额
+                -- 如果已有待显示的金额（连续出售等），先立即显示上一条，避免丢失
+                if pendingMoneyGain then
+                    local prevText = C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString
+                        and C_CurrencyInfo.GetCoinTextureString(pendingMoneyGain)
+                        or GetCoinTextureString(pendingMoneyGain)
+                    CreateScrollingMessage(prevText, nil)
+                    lastMoneyShownTime = GetTime()
+                end
+                pendingMoneyGain = gained
+                if pendingMoneyTimer then pendingMoneyTimer:Cancel() end
+                pendingMoneyTimer = C_Timer.NewTimer(0.15, function()
+                    if pendingMoneyGain then
+                        local moneyText = C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString
+                            and C_CurrencyInfo.GetCoinTextureString(pendingMoneyGain)
+                            or GetCoinTextureString(pendingMoneyGain)
+                        CreateScrollingMessage(moneyText, nil)
+                        lastMoneyShownTime = GetTime()
+                        pendingMoneyGain = nil
+                    end
+                    pendingMoneyTimer = nil
+                end)
             end
-            local moneyText = C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString
-                and C_CurrencyInfo.GetCoinTextureString(gained)
-                or GetCoinTextureString(gained)
-            CreateScrollingMessage(moneyText, nil)
-            lastMoneyShownTime = GetTime()
         end
         previousMoney = currentMoney
     elseif event == "CHAT_MSG_LOOT" then
         local cfg = LootCfg()
         if not cfg or not cfg.enabled then return end
-        local message = ...
+        local rawMsg = ...
+        if not rawMsg then return end
+        local message = DetaintString(rawMsg)
+        if not message then return end
         local link, quantity
         -- 先匹配带数量的模式（x%d），再匹配单件模式
-        link, quantity = message:match(PATTERN_LOOT_SELF_MULTI)
-        if not link then link, quantity = message:match(PATTERN_LOOT_PUSHED_SELF_MULTI) end
+        link, quantity = string.match(message, PATTERN_LOOT_SELF_MULTI)
+        if not link then link, quantity = string.match(message, PATTERN_LOOT_PUSHED_SELF_MULTI) end
         if not link then
-            link = message:match(PATTERN_LOOT_SELF)
+            link = string.match(message, PATTERN_LOOT_SELF)
             if link then quantity = 1 end
         end
         if not link then
-            link = message:match(PATTERN_LOOT_PUSHED_SELF)
+            link = string.match(message, PATTERN_LOOT_PUSHED_SELF)
             if link then quantity = 1 end
         end
         if not link then return end
         quantity = tonumber(quantity) or 1
         -- 去重：跳过已由 LOOT_SLOT_CLEARED 或 SHOW_LOOT_TOAST 显示的物品
-        local wasShownRecently = WasShownRecently(link)
+        local wasShownRecently = WasShownRecently(link, "CHAT_MSG_LOOT")
         if wasShownRecently then return end
         local _, _, quality, _, _, _, _, _, _, texture = GetItemInfo(link)
         ShowItemLoot(link, quantity, texture, quality, false)
-        RememberShown(link)
+        RememberShown(link, "CHAT_MSG_LOOT")
     elseif event == "CHAT_MSG_CURRENCY" then
         local cfg = LootCfg()
         if not cfg or not cfg.enabled then return end
-        local message = ...
+        local rawMsg = ...
+        if not rawMsg then return end
+        local message = DetaintString(rawMsg)
+        if not message then return end
         local link, quantity = Util.ParseCurrencyChatMessage(message, CURRENCY_CHAT_PATTERNS)
         if not link then return end
         quantity = tonumber(quantity) or 1
         -- 去重：跳过已由 LOOT_SLOT_CLEARED 显示的通货
-        local wasShownRecently = WasShownRecently(link)
+        local wasShownRecently = WasShownRecently(link, "CHAT_MSG_CURRENCY")
         if wasShownRecently then return end
         local texture, quality
         local currencyInfo = C_CurrencyInfo.GetCurrencyInfoFromLink(link)
@@ -826,16 +890,24 @@ f:SetScript("OnEvent", function(self, event, ...)
             quality = currencyInfo.quality
         end
         ShowItemLoot(link, quantity, texture, quality, true)
-        RememberShown(link)
+        RememberShown(link, "CHAT_MSG_CURRENCY")
     elseif event == "CHAT_MSG_MONEY" then
         local cfg = LootCfg()
         if not cfg or not cfg.enabled then return end
-        -- 去重：如果 PLAYER_MONEY 近期已显示过金币，跳过
-        if (GetTime() - lastMoneyShownTime) < 2 then return end
-        local message = ...
-        local moneyText = message:match(PATTERN_YOU_LOOT_MONEY)
-        if not moneyText then moneyText = message:match(PATTERN_LOOT_MONEY_SPLIT) end
+        local rawMsg = ...
+        if not rawMsg then return end
+        local message = DetaintString(rawMsg)
+        if not message then return end
+        local moneyText = string.match(message, PATTERN_YOU_LOOT_MONEY)
+        if not moneyText then moneyText = string.match(message, PATTERN_LOOT_MONEY_SPLIT) end
         if not moneyText then return end
+        -- 取消待显示的 PLAYER_MONEY 延迟消息，使用 CHAT_MSG_MONEY 的精确金额
+        if pendingMoneyGain then
+            pendingMoneyGain = nil
+            if pendingMoneyTimer then pendingMoneyTimer:Cancel(); pendingMoneyTimer = nil end
+        end
+        -- 去重：如果近期已显示过金币（拾取窗口场景），跳过
+        if (GetTime() - lastMoneyShownTime) < 2 then return end
         CreateScrollingMessage(moneyText, nil)
         lastMoneyShownTime = GetTime()
     elseif event == "SHOW_LOOT_TOAST" then
@@ -845,7 +917,7 @@ f:SetScript("OnEvent", function(self, event, ...)
         if not link or link == "" then return end
         if typeIdentifier == "money" then return end
         -- 去重：跳过已由 LOOT_SLOT_CLEARED 显示的物品
-        local wasShownRecently = WasShownRecently(link)
+        local wasShownRecently = WasShownRecently(link, "SHOW_LOOT_TOAST")
         if wasShownRecently then return end
         quantity = tonumber(quantity) or 1
         local isCurrency = (typeIdentifier == "currency")
@@ -862,18 +934,24 @@ f:SetScript("OnEvent", function(self, event, ...)
             quality = q
         end
         ShowItemLoot(link, quantity, texture, quality, isCurrency)
-        RememberShown(link)
+        RememberShown(link, "SHOW_LOOT_TOAST")
     elseif event == "CHAT_MSG_COMBAT_FACTION_CHANGE" then
         local cfg = LootCfg()
         if not cfg or not cfg.enabled then return end
-        local message = ...
+        local rawMsg = ...
+        if not rawMsg then return end
+        local message = DetaintString(rawMsg)
+        if not message then return end
         local info = ChatTypeInfo["COMBAT_FACTION_CHANGE"]
         local colorCode = info and format("|cff%02x%02x%02x", info.r * 255, info.g * 255, info.b * 255) or "|cff00ffa0"
         CreateScrollingMessage(colorCode .. message .. "|r", 236681) -- Achievement_Reputation_01 fileID
     elseif event == "CHAT_MSG_SKILL" then
         local cfg = LootCfg()
         if not cfg or not cfg.enabled then return end
-        local message = ...
+        local rawMsg = ...
+        if not rawMsg then return end
+        local message = DetaintString(rawMsg)
+        if not message then return end
         local info = ChatTypeInfo["SKILL"]
         local colorCode = info and format("|cff%02x%02x%02x", info.r * 255, info.g * 255, info.b * 255) or "|cff5555ff"
         local skillName, skillLevel
@@ -884,7 +962,7 @@ f:SetScript("OnEvent", function(self, event, ...)
             pattern = ERR_SKILL_UP_SI:gsub("%%%d*%$?s", "\001"):gsub("%%%d*%$?d", "\002")
             pattern = pattern:gsub("([%(%)%.%%%+%-%*%?%[%]%^%$])", "%%%1")
             pattern = pattern:gsub("\001", "(.-)"):gsub("\002", "(%%d+)")
-            skillName, skillLevel = message:match(pattern)
+            skillName, skillLevel = string.match(message, pattern)
         end
         -- Try to find the profession icon matching skillName
         local skillIcon = 136830 -- INV_Misc_Book_11 fileID
