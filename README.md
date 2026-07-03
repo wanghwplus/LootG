@@ -120,6 +120,16 @@ Leave Combat    (green flash text)
 
 ## Changelog
 
+### v1.3.1
+- Fixed the settings window rendering blank — tab contents never drew due to a callback signature mismatch.
+- Unified the display settings between Loot Notification and Combat State: both now use Scroll Speed (multiplier of 100 px/s) and Fade Time (seconds); old loot `scrollTime` / `fadeSpeed` values are auto-converted per profile.
+- The enter/leave combat text boxes now show the effective localized default instead of appearing empty; clearing them restores the follow-client-locale behavior.
+- Fixed long combat state text (e.g. "Leave Combat") being truncated with an ellipsis.
+- Fixed a Lua error when looting caged battle pets and other non-item links.
+- Switching / copying / resetting profiles now applies anchors and lock state immediately.
+- Tuned defaults: loot font size 14, display time 1.5s, fade 0.1s, Y offset 250; combat display time 1s.
+- zhCN / zhTW leave-combat wording changed to "离开战斗" / "離開戰鬥".
+
 ### v1.3.0
 - Rewrote settings UI on Ace3 (AceGUI/AceConfig/AceDB/LibSharedMedia). Standalone floating window with Loot / Combat State / Profiles tabs.
 - Added profile support (Profiles tab) so multiple characters can share or diverge on settings.
