@@ -120,6 +120,14 @@ Leave Combat    (green flash text)
 
 ## Changelog
 
+### v1.3.0
+- Rewrote settings UI on Ace3 (AceGUI/AceConfig/AceDB/LibSharedMedia). Standalone floating window with Loot / Combat State / Profiles tabs.
+- Added profile support (Profiles tab) so multiple characters can share or diverge on settings.
+- Added LibSharedMedia font list — any user-installed font from an LSM-aware addon is available in the font dropdown.
+- Fixed enter/leave combat default text sometimes freezing at whatever locale seeded the SavedVariables on first install. Defaults are now empty strings and the runtime falls back to the current-locale L string each call.
+- Existing LootGDB SavedVariables are auto-migrated into the new LootGAceDB shape on first launch.
+- Interface bumped to 12.0.5 / 12.0.7.
+
 ### v1.2.1
 - Added loot, currency, and gold notifications from opened containers, and restored missing chest and quest reward messages
 - Fixed duplicate or mixed notifications for personal currency, dungeon loot, and chest gold rewards
