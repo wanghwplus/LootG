@@ -2,6 +2,14 @@ local addonName, L = ...
 local LootG = L
 _G[addonName] = LootG
 
+local LSM = LibStub("LibSharedMedia-3.0")
+
+-- Read helpers that shield the rest of the file from AceDB shape drift.
+-- LootG.db is initialized in LootG:InitializeConfig() during ADDON_LOADED,
+-- so anything reached before that (script scope) must not call these.
+local function LootCfg()  return LootG.db and LootG.db.profile.loot        end
+local function CSCfg()    return LootG.db and LootG.db.profile.combatState end
+
 -- ======= Loot Notification =======
 
 local f = CreateFrame("Frame")
@@ -100,8 +108,8 @@ anchor:SetScript("OnDragStop", function(self)
     xOfs = math.floor(xOfs * 10 + 0.5) / 10
     yOfs = math.floor(yOfs * 10 + 0.5) / 10
 
-    LootGDB.anchorX = xOfs
-    LootGDB.anchorY = yOfs
+    LootCfg().anchorX = xOfs
+    LootCfg().anchorY = yOfs
 
     -- Sync with Settings Panel if open
     if LootG.SettingsControls and LootG.SettingsControls.AnchorX then
@@ -133,13 +141,13 @@ lockBtn:SetSize(100, 26)
 lockBtn:SetPoint("CENTER")
 lockBtn:SetText(L["Locked"])
 lockBtn:SetScript("OnClick", function()
-    LootGDB.locked = true
+    LootCfg().locked = true
     LootG:UpdateAnchorVisibility()
     lockPopup:Hide()
 end)
 
 function LootG:ShowLockPopup()
-    if not LootGDB.locked then
+    if not LootCfg().locked then
         lockPopup:ClearAllPoints()
         lockPopup:SetPoint("TOP", anchor, "BOTTOM", 0, -10)
         lockPopup:Show()
@@ -151,7 +159,7 @@ function LootG:HideLockPopup()
 end
 
 function LootG:UpdateAnchorVisibility()
-    if LootGDB.locked then
+    if LootCfg().locked then
         anchor:Hide()
         lockPopup:Hide()
     else
@@ -161,7 +169,7 @@ end
 
 function LootG:ResetAnchor()
     anchor:ClearAllPoints()
-    anchor:SetPoint("CENTER", UIParent, "CENTER", LootGDB.anchorX or 0, LootGDB.anchorY or 0)
+    anchor:SetPoint("CENTER", UIParent, "CENTER", LootCfg().anchorX or 0, LootCfg().anchorY or 0)
 end
 
 -- Helper to get a frame from the pool or create a new one
@@ -238,9 +246,10 @@ local function AnimUpdate(self, elapsed)
             return a.currentY < b.currentY
         end)
 
-        local minSpacing = (LootGDB and LootGDB.fontSize or 20) + 6
+        local cfg = LootCfg()
+        local minSpacing = ((cfg and cfg.fontSize) or 20) + 6
         -- 方向感知：UP 时推更高的帧上移，DOWN 时推更低的帧下移
-        local dirUp = (LootGDB and LootGDB.scrollDirection == "UP")
+        local dirUp = (cfg and cfg.scrollDirection == "UP")
         if dirUp then
             -- 从低到高扫描，保证高位帧与低位帧间距足够
             for i = 2, #sorted do
@@ -288,20 +297,21 @@ end
 animContainer:SetScript("OnUpdate", AnimUpdate)
 
 local function CreateScrollingMessage(text, icon)
-    if not LootGDB then return end
+    local cfg = LootCfg()
+    if not cfg then return end
 
     local frame = GetMessageFrame()
-    local fontPath = LootGDB.fontPath
-    if type(fontPath) ~= "string" then
-        fontPath = "Fonts\\FRIZQT__.TTF"
-    end
+    local fontName = cfg.font
+    local fontPath = (fontName and LSM:Fetch("font", fontName))
+                  or LSM:Fetch("font", LSM:GetDefault("font"))
+                  or STANDARD_TEXT_FONT
 
     -- Apply font outline setting
-    local outline = LootGDB.fontOutline or "OUTLINE"
-    frame.text:SetFont(fontPath, LootGDB.fontSize, outline)
+    local outline = cfg.fontOutline or "OUTLINE"
+    frame.text:SetFont(fontPath, cfg.fontSize, outline)
 
     -- Apply font shadow setting
-    if LootGDB.fontShadow then
+    if cfg.fontShadow then
         frame.text:SetShadowColor(0, 0, 0, 1)
         frame.text:SetShadowOffset(1, -1)
     else
@@ -309,24 +319,24 @@ local function CreateScrollingMessage(text, icon)
     end
 
     local displayText = text
-    local iconSize = (LootGDB.fontSize or 20) - 2
-    if icon and LootGDB.showIcon then
+    local iconSize = (cfg.fontSize or 20) - 2
+    if icon and cfg.showIcon then
         displayText = "|T" .. icon .. ":" .. iconSize .. ":" .. iconSize .. ":0:0|t " .. text
     end
     frame.text:SetText(displayText)
 
     -- Animation Data
     frame.startTime = GetTime()
-    frame.duration = LootGDB.scrollTime
-    frame.displayTime = LootGDB.displayTime
-    frame.fadeSpeed = LootGDB.fadeSpeed
-    frame.direction = LootGDB.scrollDirection == "UP" and 1 or -1
+    frame.duration = cfg.scrollTime
+    frame.displayTime = cfg.displayTime
+    frame.fadeSpeed = cfg.fadeSpeed
+    frame.direction = cfg.scrollDirection == "UP" and 1 or -1
     frame.baseOffset = 0
     frame.expired = false
     frame.currentY = 0
 
     -- Push existing messages（碰撞检测会动态保证间距，步长减小）
-    local offsetStep = (LootGDB.fontSize + 6) * frame.direction
+    local offsetStep = (cfg.fontSize + 6) * frame.direction
     for _, active in ipairs(activeMessages) do
         if not active.expired then
             active.baseOffset = active.baseOffset + offsetStep
@@ -414,11 +424,12 @@ end
 -- ======= Combat State =======
 
 --------------------------------------------------
--- Helper: Get settings from LootGDB.combatState
+-- Helper: Get settings from LootG.db.profile.combatState
 --------------------------------------------------
 local function GetCSSetting(key, default)
-    if LootGDB and LootGDB.combatState and LootGDB.combatState[key] ~= nil then
-        return LootGDB.combatState[key]
+    local cfg = CSCfg()
+    if cfg and cfg[key] ~= nil then
+        return cfg[key]
     end
     return default
 end
@@ -477,8 +488,8 @@ csAnchor:SetScript("OnDragStop", function(self)
     xOfs = math.floor(xOfs * 10 + 0.5) / 10
     yOfs = math.floor(yOfs * 10 + 0.5) / 10
 
-    LootGDB.combatState.posX = xOfs
-    LootGDB.combatState.posY = yOfs
+    CSCfg().posX = xOfs
+    CSCfg().posY = yOfs
 
     -- Sync with Settings Panel if open
     if LootG.CSSettingsControls and LootG.CSSettingsControls.PosX then
@@ -510,7 +521,7 @@ csLockBtn:SetSize(100, 26)
 csLockBtn:SetPoint("CENTER")
 csLockBtn:SetText(L["Locked"] or "Lock Position")
 csLockBtn:SetScript("OnClick", function()
-    LootGDB.combatState.locked = true
+    CSCfg().locked = true
     LootG:UpdateCSAnchorVisibility()
     csLockPopup:Hide()
 end)
@@ -645,10 +656,10 @@ csFrame:SetScript("OnUpdate", OnUpdate_Scroll)
 local function FlashCombat(textLabel, r, g, b)
     UpdateOnUpdateHandler()
 
-    local fontPath = GetCSSetting("fontPath", "Fonts\\FRIZQT__.TTF")
-    if type(fontPath) ~= "string" then
-        fontPath = "Fonts\\FRIZQT__.TTF"
-    end
+    local fontName = GetCSSetting("font", "Friz Quadrata TT")
+    local fontPath = LSM:Fetch("font", fontName)
+                  or LSM:Fetch("font", LSM:GetDefault("font"))
+                  or STANDARD_TEXT_FONT
     local fontSize = GetCSSetting("fontSize", 38)
     local fontOutline = GetCSSetting("fontOutline", "OUTLINE")
     local fontShadow = GetCSSetting("fontShadow", true)
@@ -762,7 +773,8 @@ f:SetScript("OnEvent", function(self, event, ...)
             end
         end
     elseif event == "PLAYER_MONEY" then
-        if not LootGDB or not LootGDB.enabled then
+        local cfg = LootCfg()
+        if not cfg or not cfg.enabled then
             previousMoney = GetMoney()
             return
         end
@@ -782,7 +794,8 @@ f:SetScript("OnEvent", function(self, event, ...)
         end
         previousMoney = currentMoney
     elseif event == "CHAT_MSG_LOOT" then
-        if not LootGDB or not LootGDB.enabled then return end
+        local cfg = LootCfg()
+        if not cfg or not cfg.enabled then return end
         local message = ...
         local link, quantity
         -- 先匹配带数量的模式（x%d），再匹配单件模式
@@ -805,7 +818,8 @@ f:SetScript("OnEvent", function(self, event, ...)
         ShowItemLoot(link, quantity, texture, quality, false)
         RememberShown(link)
     elseif event == "CHAT_MSG_CURRENCY" then
-        if not LootGDB or not LootGDB.enabled then return end
+        local cfg = LootCfg()
+        if not cfg or not cfg.enabled then return end
         local message = ...
         local link, quantity = Util.ParseCurrencyChatMessage(message, CURRENCY_CHAT_PATTERNS)
         if not link then return end
@@ -822,7 +836,8 @@ f:SetScript("OnEvent", function(self, event, ...)
         ShowItemLoot(link, quantity, texture, quality, true)
         RememberShown(link)
     elseif event == "CHAT_MSG_MONEY" then
-        if not LootGDB or not LootGDB.enabled then return end
+        local cfg = LootCfg()
+        if not cfg or not cfg.enabled then return end
         -- 去重：如果 PLAYER_MONEY 近期已显示过金币，跳过
         if (GetTime() - lastMoneyShownTime) < 2 then return end
         local message = ...
@@ -832,7 +847,8 @@ f:SetScript("OnEvent", function(self, event, ...)
         CreateScrollingMessage(moneyText, nil)
         lastMoneyShownTime = GetTime()
     elseif event == "SHOW_LOOT_TOAST" then
-        if not LootGDB or not LootGDB.enabled then return end
+        local cfg = LootCfg()
+        if not cfg or not cfg.enabled then return end
         local typeIdentifier, link, quantity = ...
         if not link or link == "" then return end
         if typeIdentifier == "money" then return end
@@ -856,13 +872,15 @@ f:SetScript("OnEvent", function(self, event, ...)
         ShowItemLoot(link, quantity, texture, quality, isCurrency)
         RememberShown(link)
     elseif event == "CHAT_MSG_COMBAT_FACTION_CHANGE" then
-        if not LootGDB or not LootGDB.enabled then return end
+        local cfg = LootCfg()
+        if not cfg or not cfg.enabled then return end
         local message = ...
         local info = ChatTypeInfo["COMBAT_FACTION_CHANGE"]
         local colorCode = info and format("|cff%02x%02x%02x", info.r * 255, info.g * 255, info.b * 255) or "|cff00ffa0"
         CreateScrollingMessage(colorCode .. message .. "|r", 236681) -- Achievement_Reputation_01 fileID
     elseif event == "CHAT_MSG_SKILL" then
-        if not LootGDB or not LootGDB.enabled then return end
+        local cfg = LootCfg()
+        if not cfg or not cfg.enabled then return end
         local message = ...
         local info = ChatTypeInfo["SKILL"]
         local colorCode = info and format("|cff%02x%02x%02x", info.r * 255, info.g * 255, info.b * 255) or "|cff5555ff"
@@ -914,7 +932,8 @@ end)
 SLASH_LOOTG1 = "/lootg"
 SlashCmdList["LOOTG"] = function(msg)
     if msg == "debug" then
-        print("|cff00ff00[LootG Debug]|r enabled = " .. tostring(LootGDB and LootGDB.enabled))
+        local cfg = LootCfg()
+        print("|cff00ff00[LootG Debug]|r enabled = " .. tostring(cfg and cfg.enabled))
         print("|cff00ff00[LootG Debug]|r ERR_SKILL_UP_SI = " .. tostring(ERR_SKILL_UP_SI))
         local money = GetMoney()
         print("|cff00ff00[LootG Debug]|r GetMoney() = " .. tostring(money) .. " copper")
