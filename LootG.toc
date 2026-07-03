@@ -4,16 +4,23 @@
 ## Notes-zhCN: 使拾取的物品在屏幕中心动态滚动显示。
 ## Author: Claude (AI Assistant)
 ## Version: 1.2.1
-## SavedVariables: LootGDB
+## SavedVariables: LootGAceDB, LootGDB
 ## AddonCompartmentFunc: LootG_OnCompartmentClick
 ## IconTexture: Interface\AddOns\LootG\icon.png
 
 # Libraries
-# (In a real scenario, these would be included in a Libs folder)
-# For this demonstration, I will use a simplified implementation without external libs if they are not present,
-# BUT I will structure it for Ace3 as it's the gold standard for WoW addons.
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
+Libs\AceDB-3.0\AceDB-3.0.xml
+Libs\AceDBOptions-3.0\AceDBOptions-3.0.xml
+Libs\AceGUI-3.0\AceGUI-3.0.xml
+Libs\AceConfig-3.0\AceConfig-3.0.xml
+Libs\LibSharedMedia-3.0\lib.xml
+Libs\AceGUI-3.0-SharedMediaWidgets\widget.xml
 
+# Addon
 Locales.lua
 Config.lua
+Options.lua
 LootGUtils.lua
 LootG.lua
