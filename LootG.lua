@@ -314,7 +314,7 @@ local function CreateScrollingMessage(text, icon)
 
     -- Animation Data
     frame.startTime = GetTime()
-    frame.scrollSpeed = cfg.scrollSpeed or 0.7
+    frame.scrollSpeed = cfg.scrollSpeed or 1
     frame.displayTime = cfg.displayTime
     frame.fadeTime = cfg.fadeTime or 0.1
     frame.direction = cfg.scrollDirection == "UP" and 1 or -1
@@ -433,10 +433,11 @@ csFrame:Hide()
 --------------------------------------------------
 -- Text
 --------------------------------------------------
+-- 只锚定中心、不约束宽度，让 FontString 按文字内容自适应，
+-- 否则长文本超出 csFrame 固定宽度时会被截断成省略号
 local csText = csFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
-csText:SetAllPoints()
+csText:SetPoint("CENTER")
 csText:SetJustifyH("CENTER")
-csText:SetJustifyV("MIDDLE")
 
 --------------------------------------------------
 -- State
