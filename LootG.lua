@@ -100,7 +100,7 @@ animContainer:Hide()
 -- 统一去重操作，保证 toast/chat/loot 共享同一套规则
 -- source 参数标识事件来源，相同来源的多次触发视为不同拾取，不互相去重
 local function RememberShown(link, source)
-    return Util.MarkRecentlyShown(recentlyShown, link, GetTime(), source)
+    return Util.MarkRecentlyShown(recentlyShown, link, GetTime(), source, RECENTLY_SHOWN_WINDOW)
 end
 
 local function WasShownRecently(link, source)
@@ -145,46 +145,9 @@ anchor:SetScript("OnDragStop", function(self)
     LootG:ResetAnchor() -- Re-anchor strictly to CENTER
 end)
 
--- Lock Button Popup Frame
-local lockPopup = CreateFrame("Frame", "LootGLockPopup", UIParent, "BackdropTemplate")
-lockPopup:SetSize(120, 40)
-lockPopup:SetPoint("TOP", anchor, "BOTTOM", 0, -10)
-lockPopup:SetBackdrop({
-    bgFile = "Interface\\Buttons\\WHITE8X8",
-    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-    tile = true, tileSize = 16, edgeSize = 16,
-    insets = { left = 4, right = 4, top = 4, bottom = 4 }
-})
-lockPopup:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
-lockPopup:Hide()
-lockPopup:SetFrameStrata("DIALOG")
-
-local lockBtn = CreateFrame("Button", nil, lockPopup, "UIPanelButtonTemplate")
-lockBtn:SetSize(100, 26)
-lockBtn:SetPoint("CENTER")
-lockBtn:SetText(L["Locked"])
-lockBtn:SetScript("OnClick", function()
-    LootCfg().locked = true
-    LootG:UpdateAnchorVisibility()
-    lockPopup:Hide()
-end)
-
-function LootG:ShowLockPopup()
-    if not LootCfg().locked then
-        lockPopup:ClearAllPoints()
-        lockPopup:SetPoint("TOP", anchor, "BOTTOM", 0, -10)
-        lockPopup:Show()
-    end
-end
-
-function LootG:HideLockPopup()
-    lockPopup:Hide()
-end
-
 function LootG:UpdateAnchorVisibility()
     if LootCfg().locked then
         anchor:Hide()
-        lockPopup:Hide()
     else
         anchor:Show()
     end
@@ -426,21 +389,21 @@ local function ShowItemLoot(link, quantity, texture, quality, isCurrency)
 
     if texture then
         ShowMessage(texture, nameColor)
+    elseif not isCurrency and link:find("|Hitem:", 1, true) then
+        -- 物品信息未缓存时异步加载；Item:CreateFromItemLink 只接受
+        -- item 链接，battlepet/keystone 等其他链接类型会直接报错
+        local item = Item:CreateFromItemLink(link)
+        item:ContinueOnItemLoad(function()
+            local _, _, q, _, _, _, _, _, _, loadedTexture = GetItemInfo(link)
+            local color = nil
+            if q then
+                local r, g, b, hex = GetItemQualityColor(q)
+                color = "|c" .. hex
+            end
+            ShowMessage(loadedTexture, color)
+        end)
     else
-        if not isCurrency then
-            local item = Item:CreateFromItemLink(link)
-            item:ContinueOnItemLoad(function()
-                local _, _, q, _, _, _, _, _, _, loadedTexture = GetItemInfo(link)
-                local color = nil
-                if q then
-                    local r, g, b, hex = GetItemQualityColor(q)
-                    color = "|c" .. hex
-                end
-                ShowMessage(loadedTexture, color)
-            end)
-        else
-            ShowMessage(nil, nameColor)
-        end
+        ShowMessage(nil, nameColor)
     end
 end
 
@@ -519,30 +482,6 @@ csAnchor:SetScript("OnDragStop", function(self)
     LootG:ResetCSAnchor()
 end)
 
--- Lock Button Popup for CS Anchor
-local csLockPopup = CreateFrame("Frame", "CombatStateLockPopup", UIParent, "BackdropTemplate")
-csLockPopup:SetSize(120, 40)
-csLockPopup:SetPoint("TOP", csAnchor, "BOTTOM", 0, -10)
-csLockPopup:SetBackdrop({
-    bgFile = "Interface\\Buttons\\WHITE8X8",
-    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-    tile = true, tileSize = 16, edgeSize = 16,
-    insets = { left = 4, right = 4, top = 4, bottom = 4 }
-})
-csLockPopup:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
-csLockPopup:Hide()
-csLockPopup:SetFrameStrata("DIALOG")
-
-local csLockBtn = CreateFrame("Button", nil, csLockPopup, "UIPanelButtonTemplate")
-csLockBtn:SetSize(100, 26)
-csLockBtn:SetPoint("CENTER")
-csLockBtn:SetText(L["Locked"])
-csLockBtn:SetScript("OnClick", function()
-    CSCfg().locked = true
-    LootG:UpdateCSAnchorVisibility()
-    csLockPopup:Hide()
-end)
-
 --------------------------------------------------
 -- Exposed Functions to LootG namespace
 --------------------------------------------------
@@ -556,22 +495,9 @@ end
 function LootG:UpdateCSAnchorVisibility()
     if GetCSSetting("locked", true) then
         csAnchor:Hide()
-        csLockPopup:Hide()
     else
         csAnchor:Show()
     end
-end
-
-function LootG:ShowCSLockPopup()
-    if not GetCSSetting("locked", true) then
-        csLockPopup:ClearAllPoints()
-        csLockPopup:SetPoint("TOP", csAnchor, "BOTTOM", 0, -10)
-        csLockPopup:Show()
-    end
-end
-
-function LootG:HideCSLockPopup()
-    csLockPopup:Hide()
 end
 
 --------------------------------------------------
@@ -788,13 +714,6 @@ f:SetScript("OnEvent", function(self, event, ...)
         isLooting = false
         lootMoneyCopper = 0
         wipe(lootCache)
-        -- 清理过期的去重记录
-        local now = GetTime()
-        for k, v in pairs(recentlyShown) do
-            if now - v.time > RECENTLY_SHOWN_WINDOW then
-                recentlyShown[k] = nil
-            end
-        end
     elseif event == "PLAYER_ENTERING_WORLD" or event == "MAIL_SHOW"
         or event == "MERCHANT_SHOW" or event == "AUCTION_HOUSE_SHOW" then
         -- 同步 previousMoney，避免金币偏差混入后续差值计算
@@ -830,14 +749,16 @@ f:SetScript("OnEvent", function(self, event, ...)
                 pendingMoneyGain = gained
                 if pendingMoneyTimer then pendingMoneyTimer:Cancel() end
                 pendingMoneyTimer = C_Timer.NewTimer(0.15, function()
-                    if pendingMoneyGain then
+                    -- 定时器触发前用户可能已关闭插件，重新检查开关
+                    local cfgNow = LootCfg()
+                    if pendingMoneyGain and cfgNow and cfgNow.enabled then
                         local moneyText = C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString
                             and C_CurrencyInfo.GetCoinTextureString(pendingMoneyGain)
                             or GetCoinTextureString(pendingMoneyGain)
                         CreateScrollingMessage(moneyText, nil)
                         lastMoneyShownTime = GetTime()
-                        pendingMoneyGain = nil
                     end
+                    pendingMoneyGain = nil
                     pendingMoneyTimer = nil
                 end)
             end
@@ -956,13 +877,7 @@ f:SetScript("OnEvent", function(self, event, ...)
         local colorCode = info and format("|cff%02x%02x%02x", info.r * 255, info.g * 255, info.b * 255) or "|cff5555ff"
         local skillName, skillLevel
         if ERR_SKILL_UP_SI then
-            local pattern = ERR_SKILL_UP_SI:gsub("%%%d*%$?s", "(.-)"):gsub("%%%d*%$?d", "(%%d+)")
-            pattern = pattern:gsub("([%(%)%.%%%+%-%*%?%[%]%^%$])", "%%%1")
-            -- Restore captures that were escaped
-            pattern = ERR_SKILL_UP_SI:gsub("%%%d*%$?s", "\001"):gsub("%%%d*%$?d", "\002")
-            pattern = pattern:gsub("([%(%)%.%%%+%-%*%?%[%]%^%$])", "%%%1")
-            pattern = pattern:gsub("\001", "(.-)"):gsub("\002", "(%%d+)")
-            skillName, skillLevel = string.match(message, pattern)
+            skillName, skillLevel = string.match(message, BuildPattern(ERR_SKILL_UP_SI))
         end
         -- Try to find the profession icon matching skillName
         local skillIcon = 136830 -- INV_Misc_Book_11 fileID

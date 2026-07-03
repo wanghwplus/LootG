@@ -7,7 +7,6 @@ local Locales = {
     ["LEAVE_COMBAT"] = "Leave Combat",
     ["Loot"]         = "Loot",
     ["LootG"]        = "LootG",
-    ["Locked"]       = "Lock Position",
     ["Combat State"] = "Combat State",
 
     -- Font display names shown in the LSM font dropdown fallback.
@@ -16,9 +15,6 @@ local Locales = {
     ["Fonts\\ARIALN.TTF"]   = "Chat (Arial Narrow)",
     ["Fonts\\skurri.ttf"]   = "Damage (Skurri)",
     ["Fonts\\MORPHEUS.TTF"] = "Quest (Morpheus)",
-
-    -- Plugin intro (still used by the Blizzard stub category description)
-    ["LootG_Intro"] = "LootG is a lightweight loot notification and combat state display addon.\n\n- Scrolling loot messages in the center of the screen\n- Combat enter/leave flash text\n- Fully customizable fonts, positions, and animations\n\nType /lootg to open settings, /lootg test to test loot display.",
 
     -- Subcategory / tab labels
     ["TAB_LOOT"]     = "Loot Notification",
@@ -77,15 +73,12 @@ if gameLocale == "zhCN" then
     Locales["ENTER_COMBAT"] = "进入战斗"
     Locales["LEAVE_COMBAT"] = "脱离战斗"
     Locales["Loot"]         = "拾取"
-    Locales["Locked"]       = "锁定位置"
     Locales["Combat State"] = "战斗状态"
 
     Locales["Fonts\\FRIZQT__.TTF"] = "标准 (Friz Quadrata)"
     Locales["Fonts\\ARIALN.TTF"]   = "聊天 (Arial Narrow)"
     Locales["Fonts\\skurri.ttf"]   = "伤害 (Skurri)"
     Locales["Fonts\\MORPHEUS.TTF"] = "任务 (Morpheus)"
-
-    Locales["LootG_Intro"] = "LootG 是一个轻量级的拾取通知和战斗状态显示插件。\n\n- 屏幕中央滚动显示拾取物品\n- 进入/脱离战斗闪烁文字提示\n- 完全自定义字体、位置和动画效果\n\n输入 /lootg 打开设置，/lootg test 测试拾取显示。"
 
     Locales["TAB_LOOT"]     = "拾取通知"
     Locales["TAB_COMBAT"]   = "战斗状态"
@@ -136,15 +129,12 @@ elseif gameLocale == "zhTW" then
     Locales["ENTER_COMBAT"] = "進入戰鬥"
     Locales["LEAVE_COMBAT"] = "脫離戰鬥"
     Locales["Loot"]         = "拾取"
-    Locales["Locked"]       = "鎖定位置"
     Locales["Combat State"] = "戰鬥狀態"
 
     Locales["Fonts\\FRIZQT__.TTF"] = "標準 (Friz Quadrata)"
     Locales["Fonts\\ARIALN.TTF"]   = "聊天 (Arial Narrow)"
     Locales["Fonts\\skurri.ttf"]   = "傷害 (Skurri)"
     Locales["Fonts\\MORPHEUS.TTF"] = "任務 (Morpheus)"
-
-    Locales["LootG_Intro"] = "LootG 是一個輕量級的拾取通知和戰鬥狀態顯示插件。\n\n- 螢幕中央滾動顯示拾取物品\n- 進入/脫離戰鬥閃爍文字提示\n- 完全自定義字體、位置和動畫效果\n\n輸入 /lootg 打開設置，/lootg test 測試拾取顯示。"
 
     Locales["TAB_LOOT"]     = "拾取通知"
     Locales["TAB_COMBAT"]   = "戰鬥狀態"

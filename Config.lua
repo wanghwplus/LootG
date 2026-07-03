@@ -135,10 +135,15 @@ function LootG:InitializeConfig()
     -- Defaults.profile lazily on access.
     LootG.db = AceDB:New("LootGAceDB", LootG.Defaults, true)
 
+    -- 切换/复制/重置 profile 后立即把新配置应用到屏幕上的锚点框架，
+    -- 否则锚点位置和锁定状态会停留在旧 profile 的值
+    LootG.db.RegisterCallback(LootG, "OnProfileChanged", "RefreshAll")
+    LootG.db.RegisterCallback(LootG, "OnProfileCopied", "RefreshAll")
+    LootG.db.RegisterCallback(LootG, "OnProfileReset", "RefreshAll")
+
     LootG._MigrateLegacyDB(LootG.db, _G.LootGDB)
     if _G.LootGDB then
-        -- Blank the legacy table; WoW clears the SavedVariable at logout
-        -- when it sees an empty top-level table.
+        -- 置 nil 后 WoW 在登出时不再写出该 SavedVariable，等效于删除旧存档
         _G.LootGDB = nil
     end
 end

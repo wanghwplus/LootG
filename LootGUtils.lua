@@ -9,7 +9,16 @@ function Util.GetIDFromLink(link)
     return string.match(link, "item:(%d+)") or string.match(link, "currency:(%d+)")
 end
 
-function Util.MarkRecentlyShown(recentlyShown, link, now, source)
+-- 记录新条目时顺带惰性清理过期条目，避免无拾取窗口的场景
+-- （任务推送、邮件开箱等）让记录表无限增长
+function Util.MarkRecentlyShown(recentlyShown, link, now, source, windowSeconds)
+    local window = windowSeconds or 5
+    for key, entry in pairs(recentlyShown) do
+        if (now - entry.time) >= window then
+            recentlyShown[key] = nil
+        end
+    end
+
     local dedupKey = Util.GetIDFromLink(link)
     if dedupKey then
         recentlyShown[dedupKey] = { time = now, source = source }

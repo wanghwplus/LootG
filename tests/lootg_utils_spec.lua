@@ -81,4 +81,24 @@ do
     assert_truthy(skipped, "第 2 次拾取的不同事件源也应被去重")
 end
 
+-- MarkRecentlyShown 应惰性清理过期条目，防止记录表无限增长
+do
+    local shown = {}
+    local now = 300
+
+    util.MarkRecentlyShown(shown, "|cff0070dd|Hitem:235499::::::::80:::::|h[宝箱装备]|h|r", now, "CHAT_MSG_LOOT", 5)
+    util.MarkRecentlyShown(shown, "|cff1eff00|Hcurrency:3008:0|h[鎏金宝匣硬币]|h|r", now + 2, "CHAT_MSG_CURRENCY", 5)
+
+    -- 6 秒后记录新条目：前两条已过期，应被清理
+    util.MarkRecentlyShown(shown, "|cff1eff00|Hcurrency:2815:0|h[共鸣水晶]|h|r", now + 8, "CHAT_MSG_CURRENCY", 5)
+
+    assert_equal(shown["235499"], nil, "过期条目应在记录新条目时被清理")
+    assert_equal(shown["3008"], nil, "过期条目应在记录新条目时被清理")
+    assert_truthy(shown["2815"], "新条目应正常记录")
+
+    -- 未过期的条目不应被误删
+    util.MarkRecentlyShown(shown, "|cff0070dd|Hitem:235499::::::::80:::::|h[宝箱装备]|h|r", now + 9, "CHAT_MSG_LOOT", 5)
+    assert_truthy(shown["2815"], "窗口内的条目不应被清理")
+end
+
 print("lootg_utils_spec: ok")
