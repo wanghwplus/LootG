@@ -15,3 +15,6 @@ CLAUDE.md
 *.temp
 *.log
 *.zip
+
+# 本地文档 / spec (仅供参考,不入库)
+docs/

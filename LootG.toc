@@ -1,4 +1,4 @@
-## Interface: 120000, 120001
+## Interface: 120005, 120007
 ## Title: LootG
 ## Notes: Dynamically scroll looted items in the center of the screen.
 ## Notes-zhCN: 使拾取的物品在屏幕中心动态滚动显示。
