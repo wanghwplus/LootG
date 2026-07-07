@@ -51,16 +51,9 @@ local function DetaintString(rawMsg)
     -- Byte-level copy to produce a clean, untainted string
     -- string.format("%s", ...) does NOT reliably detaint secret strings
     local ok, result = pcall(function()
-        local bytes = {}
-        local i = 1
-        while true do
-            local b = string.byte(rawMsg, i)
-            if not b then break end
-            bytes[i] = b
-            i = i + 1
-        end
-        if #bytes == 0 then return nil end
-        return string.char(unpack(bytes))
+        local len = #rawMsg
+        if len == 0 then return nil end
+        return string.char(string.byte(rawMsg, 1, len))
     end)
     if ok and result then return result end
     return nil
@@ -92,6 +85,8 @@ AddCurrencyChatPattern(CURRENCY_GAINED_MULTIPLE_BONUS)
 -- CHAT_MSG_MONEY 金币拾取模式
 local PATTERN_YOU_LOOT_MONEY = BuildPattern(YOU_LOOT_MONEY)
 local PATTERN_LOOT_MONEY_SPLIT = BuildPattern(LOOT_MONEY_SPLIT)
+-- CHAT_MSG_SKILL 技能提升模式
+local PATTERN_SKILL_UP = type(ERR_SKILL_UP_SI) == "string" and BuildPattern(ERR_SKILL_UP_SI) or nil
 
 -- 统一动画驱动帧：单一 OnUpdate 循环驱动所有消息动画
 local animContainer = CreateFrame("Frame", nil, UIParent)
@@ -182,10 +177,13 @@ local function RecycleMessageFrame(frame)
 end
 
 -- 统一动画更新：驱动所有活跃消息的位置、碰撞避免和渐隐
+-- 复用暂存表做碰撞排序，避免每帧分配临时表带来的 GC 压力
+local sortScratch = {}
 local function AnimUpdate(self, elapsed)
     local now = GetTime()
 
-    -- 第一遍：计算位置和渐隐
+    -- 第一遍：计算位置和渐隐，同时收集存活帧到暂存表
+    local aliveCount = 0
     for _, frame in ipairs(activeMessages) do
         if not frame.expired then
             local currTime = now - frame.startTime
@@ -206,25 +204,21 @@ local function AnimUpdate(self, elapsed)
                     frame:SetAlpha(alpha)
                 end
             end
+
+            if not frame.expired then
+                aliveCount = aliveCount + 1
+                sortScratch[aliveCount] = frame
+            end
         end
+    end
+    -- 清掉上一帧遗留的尾部引用，保证 #sortScratch == aliveCount
+    for i = #sortScratch, aliveCount + 1, -1 do
+        sortScratch[i] = nil
     end
 
     -- 第二遍：碰撞检测（仅多消息时执行）
-    local activeCount = 0
-    for _, frame in ipairs(activeMessages) do
-        if not frame.expired then
-            activeCount = activeCount + 1
-        end
-    end
-
-    if activeCount > 1 then
-        -- 收集活跃帧并按 currentY 排序
-        local sorted = {}
-        for _, frame in ipairs(activeMessages) do
-            if not frame.expired then
-                tinsert(sorted, frame)
-            end
-        end
+    if aliveCount > 1 then
+        local sorted = sortScratch
         -- 按 currentY 排序，用 startTime 做平局裁决避免抖动
         table.sort(sorted, function(a, b)
             if a.currentY == b.currentY then
@@ -260,12 +254,11 @@ local function AnimUpdate(self, elapsed)
         end
     end
 
-    -- 第三遍：应用最终位置
-    for _, frame in ipairs(activeMessages) do
-        if not frame.expired then
-            frame:ClearAllPoints()
-            frame:SetPoint("CENTER", anchor, "CENTER", 0, frame.currentY)
-        end
+    -- 第三遍：应用最终位置（sortScratch 已是全部存活帧）
+    for i = 1, aliveCount do
+        local frame = sortScratch[i]
+        frame:ClearAllPoints()
+        frame:SetPoint("CENTER", anchor, "CENTER", 0, frame.currentY)
     end
 
     -- 反向遍历清理 expired 帧
@@ -445,6 +438,8 @@ csText:SetJustifyH("CENTER")
 local csTimer = 0
 local csMode = nil  -- "show" or "fade"
 local startX, startY = 0, 0
+-- FlashCombat 触发时快照动画参数，避免 OnUpdate 每帧查询配置表
+local csDisplayTime, csFadeTime, csScrollSpeed, csDirection = 1, 0.1, 1.5, "UP"
 
 --------------------------------------------------
 -- Independent Anchor Frame (red background)
@@ -508,24 +503,19 @@ end
 local function OnUpdate_Scroll(self, elapsed)
     if not csMode then return end
 
-    local displayTime = GetCSSetting("displayTime", 1)
-    local fadeTime = GetCSSetting("fadeTime", 0.1)
-    local scrollSpeed = GetCSSetting("scrollSpeed", 1.5)
-    local direction = GetCSSetting("scrollDirection", "UP")
-
     csTimer = csTimer + elapsed
 
     -- Continuous scrolling: 100 pixels per second * scrollSpeed
-    local speed = 100 * scrollSpeed
+    local speed = 100 * csScrollSpeed
     local dist = speed * csTimer
     local offsetX, offsetY = 0, 0
-    if direction == "UP" then
+    if csDirection == "UP" then
         offsetY = dist
-    elseif direction == "DOWN" then
+    elseif csDirection == "DOWN" then
         offsetY = -dist
-    elseif direction == "LEFT" then
+    elseif csDirection == "LEFT" then
         offsetX = -dist
-    elseif direction == "RIGHT" then
+    elseif csDirection == "RIGHT" then
         offsetX = dist
     end
 
@@ -533,8 +523,8 @@ local function OnUpdate_Scroll(self, elapsed)
     csFrame:SetPoint("CENTER", startX + offsetX, startY + offsetY)
 
     -- Fading
-    if csTimer > displayTime then
-        local fadeProgress = (csTimer - displayTime) / fadeTime
+    if csTimer > csDisplayTime then
+        local fadeProgress = (csTimer - csDisplayTime) / csFadeTime
         if fadeProgress >= 1 then
             csFrame:SetAlpha(0)
             csFrame:Hide()
@@ -554,19 +544,16 @@ end
 local function OnUpdate_Static(self, elapsed)
     if not csMode then return end
 
-    local displayTime = GetCSSetting("displayTime", 1)
-    local fadeTime = GetCSSetting("fadeTime", 0.1)
-
     csTimer = csTimer + elapsed
 
     if csMode == "show" then
-        if csTimer >= displayTime then
+        if csTimer >= csDisplayTime then
             csTimer = 0
             csMode = "fade"
         end
 
     elseif csMode == "fade" then
-        local fadeProgress = csTimer / fadeTime
+        local fadeProgress = csTimer / csFadeTime
 
         if fadeProgress >= 1 then
             csFrame:SetAlpha(0)
@@ -600,6 +587,12 @@ csFrame:SetScript("OnUpdate", OnUpdate_Scroll)
 --------------------------------------------------
 local function FlashCombat(textLabel, r, g, b)
     UpdateOnUpdateHandler()
+
+    -- 快照动画参数，本次闪现全程使用（与拾取消息在创建时快照的行为一致）
+    csDisplayTime = GetCSSetting("displayTime", 1)
+    csFadeTime    = GetCSSetting("fadeTime", 0.1)
+    csScrollSpeed = GetCSSetting("scrollSpeed", 1.5)
+    csDirection   = GetCSSetting("scrollDirection", "UP")
 
     local fontName = GetCSSetting("font", "Friz Quadrata TT")
     local fontPath = LSM:Fetch("font", fontName)
@@ -878,8 +871,8 @@ f:SetScript("OnEvent", function(self, event, ...)
         local info = ChatTypeInfo["SKILL"]
         local colorCode = info and format("|cff%02x%02x%02x", info.r * 255, info.g * 255, info.b * 255) or "|cff5555ff"
         local skillName, skillLevel
-        if ERR_SKILL_UP_SI then
-            skillName, skillLevel = string.match(message, BuildPattern(ERR_SKILL_UP_SI))
+        if PATTERN_SKILL_UP then
+            skillName, skillLevel = string.match(message, PATTERN_SKILL_UP)
         end
         -- Try to find the profession icon matching skillName
         local skillIcon = 136830 -- INV_Misc_Book_11 fileID

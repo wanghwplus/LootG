@@ -264,6 +264,14 @@ end
 -- AceGUI 回调签名为 (widget, 事件名, 值)，tab 值在第 3 个参数
 local function BuildTabContent(container, _, group)
     container:ReleaseChildren()
+
+    if group == "profiles" then
+        -- AceConfigDialog:Open renders directly into the container.
+        RegisterProfileOptions()
+        AceConfigDialog:Open("LootG_Profiles", container)
+        return
+    end
+
     local scroll = AceGUI:Create("ScrollFrame")
     scroll:SetLayout("Flow")
     container:AddChild(scroll)
@@ -272,10 +280,6 @@ local function BuildTabContent(container, _, group)
         DrawLootTab(scroll)
     elseif group == "combat" then
         DrawCombatTab(scroll)
-    elseif group == "profiles" then
-        container:ReleaseChildren()  -- AceConfigDialog:Open renders directly.
-        RegisterProfileOptions()
-        AceConfigDialog:Open("LootG_Profiles", container)
     end
 end
 

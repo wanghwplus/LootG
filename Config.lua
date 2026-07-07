@@ -99,7 +99,8 @@ function LootG._MigrateLootShape(loot)
     end
     loot.scrollTime = nil
     if type(loot.fadeSpeed) == "number" then
-        loot.fadeTime = loot.fadeSpeed
+        -- 旧值可能为 0（瞬间消失），夹到渐隐滑块范围 [0.1, 3] 避免动画循环除零
+        loot.fadeTime = math.min(3, math.max(0.1, loot.fadeSpeed))
     end
     loot.fadeSpeed = nil
 end
